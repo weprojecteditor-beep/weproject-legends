@@ -143,7 +143,7 @@ function Shell({ auth, onLogout }) {
 
       {/* Body */}
       <div className="px-4 pb-8 flex flex-col gap-3" style={{ maxWidth: 560, margin: "0 auto" }}>
-        {tab === "battle" && state.data && <Battlefield state={state.data} />}
+        {tab === "battle" && state.data && <Battlefield state={state.data} meId={auth.id} />}
         {tab === "hero" && player.data && <Hero player={player.data} />}
         {tab === "shop" && shop.data && player.data && (
           <Shop

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, RANK_COLORS, PHASE_META, monthName, fmt } from "../theme.js";
+import { C, RANK_COLORS, PHASE_META, monthName, fmt, daysLeftInMonth, medal } from "../theme.js";
 import { getState } from "../api.js";
 import { usePolling } from "../hooks.js";
 import { Loading } from "../ui.jsx";
@@ -101,12 +101,18 @@ export default function TvApp() {
 
 function BossScreen({ boss }) {
   const remaining = Math.max(0, boss.hpMax - boss.damage);
+  const dLeft = daysLeftInMonth(boss.month);
   return (
     <div className="flex flex-col justify-center h-full">
       <div className="flex items-end justify-between" style={{ marginBottom: "2vh" }}>
         <div>
           <div style={{ color: C.dim, fontSize: "1.4vw", letterSpacing: "0.2em", fontFamily: "'Chakra Petch', sans-serif" }}>
             WORLD BOSS · {monthName(boss.month)}
+            {dLeft != null && (
+              <span style={{ color: dLeft <= 3 ? C.hp : C.gold, marginLeft: "1vw" }}>
+                · {dLeft} DAYS LEFT
+              </span>
+            )}
           </div>
           <div style={{ fontSize: "5vw", fontWeight: 700, fontFamily: "'Chakra Petch', sans-serif", lineHeight: 1.05 }}>
             {monthName(boss.month)} Overlord 👹
@@ -196,7 +202,7 @@ function BoardsScreen({ damage, creative }) {
             >
               <div className="absolute left-0 top-0 h-full" style={{ width: `${(p.damage / max) * 100}%`, background: i === 0 ? `${C.gold}1A` : `${C.exp}10` }} />
               <div className="relative" style={{ width: "2.5vw", textAlign: "center", fontSize: "2vw", fontWeight: 700, color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch', sans-serif" }}>
-                {i + 1}
+                {medal(i)}
               </div>
               <div className="relative flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -227,7 +233,7 @@ function BoardsScreen({ damage, creative }) {
               style={{ padding: "1.4vh 1.2vw", background: C.panelSoft, border: `2px solid ${i === 0 ? C.purple + "88" : C.line}` }}
             >
               <div style={{ width: "2.5vw", textAlign: "center", fontSize: "2vw", fontWeight: 700, color: i === 0 ? C.purple : C.text, fontFamily: "'Chakra Petch', sans-serif" }}>
-                {i + 1}
+                {medal(i)}
               </div>
               <div className="flex-1 min-w-0">
                 <div style={{ fontSize: "1.8vw", fontWeight: 700 }}>{p.name}</div>

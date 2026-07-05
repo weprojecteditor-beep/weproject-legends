@@ -47,3 +47,20 @@ export function monthName(monthStr) {
 }
 
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+
+// Days left in the boss's month, e.g. "2026-07" -> days until 31 Jul.
+// Returns null if we're not currently inside that month.
+export function daysLeftInMonth(monthStr) {
+  if (!monthStr) return null;
+  const parts = String(monthStr).split("-");
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (!y || !m) return null;
+  const now = new Date();
+  if (now.getFullYear() !== y || now.getMonth() + 1 !== m) return null;
+  const lastDay = new Date(y, m, 0).getDate();
+  return Math.max(0, lastDay - now.getDate());
+}
+
+// 🥇🥈🥉 for the top three, plain number after that.
+export const medal = (i) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : String(i + 1));

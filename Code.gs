@@ -351,3 +351,171 @@ function buildGuide(ss) {
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, values.length, 5).setVerticalAlignment('middle');
 }
+
+/* ================================================================== */
+/* OPTIONAL HELPERS — run these individually, NOT setupWeprojectLegends */
+/* ================================================================== */
+
+/**
+ * Non-destructive: reorders + color-codes the tabs into workflow groups.
+ * Does NOT rename tabs (the API reads them by name) and does NOT touch data.
+ * Run THIS function on its own.
+ */
+function organizeSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var plan = [
+    ['Guide',             '#34A853'], // reference (green)
+    ['Presets',           '#34A853'], // reference (green) — created by enableSmartLogging
+    ['EXP_Log',           '#F5C542'], // daily entry (gold)
+    ['Achievements_Feed', '#F5C542'], // daily entry (gold)
+    ['Redemptions',       '#EA4335'], // approve/reject (red)
+    ['Players',           '#9AA0A6'], // setup (grey)
+    ['Shop',              '#9AA0A6'],
+    ['Boss',              '#9AA0A6'],
+    ['Config',            '#9AA0A6']
+  ];
+  var pos = 1;
+  for (var i = 0; i < plan.length; i++) {
+    var sh = ss.getSheetByName(plan[i][0]);
+    if (!sh) continue;
+    ss.setActiveSheet(sh);
+    ss.moveActiveSheet(pos++);
+    sh.setTabColor(plan[i][1]);
+  }
+  SpreadsheetApp.getUi().alert(
+    'Tabs organized',
+    'Grouped + color-coded:\n\n' +
+    'GREEN  Guide / Presets — reference\n' +
+    'GOLD   EXP_Log + Achievements_Feed — fill in daily\n' +
+    'RED    Redemptions — approve / reject\n' +
+    'GREY   Players / Shop / Boss / Config — setup\n\n' +
+    'No data changed, no tabs renamed.',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+/**
+ * Adds a Presets tab + a task dropdown on EXP_Log.item.
+ * Picking a task auto-fills category, exp, and date. Run this ONCE.
+ */
+function enableSmartLogging() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var p = ss.getSheetByName('Presets');
+  if (p) { p.clear(); } else { p = ss.insertSheet('Presets'); }
+
+  p.getRange(1, 1, 1, 3).setValues([['task', 'category', 'exp']])
+    .setFontWeight('bold').setFontColor('#F5C542').setBackground('#0A0D1C');
+
+  var presets = [
+    ['Publish ≥1 ad', 'mission', 10],
+    ['Submit report before 10:30am', 'mission', 5],
+    ['Blast 1 audience pool', 'mission', 10],
+    ['Completed all daily missions', 'action', 30],
+    ['10 purchases in a single day (Double Kill)', 'action', 20],
+    ['Helped a teammate (Assist)', 'assist', 15],
+    ['First order of the day (First Blood)', 'achievement', 10],
+    ['Winning Creative', 'achievement', 80],
+    ['High CTR Creative', 'action', 40],
+    ['Daily MVP', 'mvp', 50]
+  ];
+  p.getRange(2, 1, presets.length, 3).setValues(presets);
+  p.setFrozenRows(1);
+  p.setColumnWidth(1, 320);
+  p.setTabColor('#34A853');
+
+  // Dropdown on EXP_Log.item (col 5) — free text still allowed for custom items
+  var exp = ss.getSheetByName('EXP_Log');
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(p.getRange('A2:A200'), true)
+    .setAllowInvalid(true)
+    .build();
+  exp.getRange(2, 5, 2000, 1).setDataValidation(rule);
+
+  SpreadsheetApp.getUi().alert('Smart logging is ON',
+    'In EXP_Log, pick a task from the "item" dropdown — category, exp and date fill in automatically. You can still type custom text for one-off items.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * Auto-fills category/exp/date when a preset task is chosen in EXP_Log.item.
+ * This is a simple trigger — it runs automatically, no setup needed.
+ */
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    var sh = e.range.getSheet();
+    if (sh.getName() !== 'EXP_Log') return;
+    if (e.range.getColumn() !== 5 || e.range.getRow() < 2) return;
+    var task = e.value;
+    if (!task) return;
+    var p = e.source.getSheetByName('Presets');
+    if (!p || p.getLastRow() < 2) return;
+    var rows = p.getRange(2, 1, p.getLastRow() - 1, 3).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(task)) {
+        var r = e.range.getRow();
+        sh.getRange(r, 4).setValue(rows[i][1]); // category
+        sh.getRange(r, 6).setValue(rows[i][2]); // exp
+        var dc = sh.getRange(r, 2);
+        if (dc.getValue() === '') dc.setValue(new Date()); // date if empty
+        break;
+      }
+    }
+  } catch (err) {}
+}
+
+/**
+ * Loads a demo dataset that showcases every feature.
+ * REPLACES the contents of EXP_Log + Achievements_Feed (keeps everything else).
+ * Run THIS function. Delete the rows afterwards to go back to a clean sheet.
+ */
+function loadDemoData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var exp = ss.getSheetByName('EXP_Log');
+  var feed = ss.getSheetByName('Achievements_Feed');
+  if (!exp || !feed) { SpreadsheetApp.getUi().alert('Run setupWeprojectLegends first.'); return; }
+
+  var d = new Date();
+  function at(h, m) { var x = new Date(); x.setHours(h, m, 0, 0); return x; }
+
+  if (exp.getLastRow() > 1) exp.getRange(2, 1, exp.getLastRow() - 1, 9).clearContent();
+  if (feed.getLastRow() > 1) feed.getRange(2, 1, feed.getLastRow() - 1, 6).clearContent();
+
+  // log_id, date, player_id, category, item, exp, amount_rm, approved, note
+  var expRows = [
+    ['', d, 'P002', 'boss', 'Closed RM 212,300 in ad revenue', 4200, 212300, true, ''],
+    ['', d, 'P009', 'boss', 'Live session drove RM 154,200', 3700, 154200, true, ''],
+    ['', d, 'P003', 'boss', 'Closed RM 128,800 campaign', 5600, 128800, true, ''],
+    ['', d, 'P004', 'boss', 'RM 88,700 in sales', 2100, 88700, true, ''],
+    ['', d, 'P010', 'boss', 'Live RM 64,200', 1200, 64200, true, ''],
+    ['', d, 'P007', 'boss', 'RM 41,200 in sales', 900, 41200, true, ''],
+    ['', d, 'P006', 'boss', 'RM 50,000 campaign', 1500, 50000, true, ''],
+    ['', d, 'P008', 'boss', 'RM 40,000 sales', 700, 40000, true, ''],
+    ['', d, 'P014', 'achievement', 'Winning Creative #A-114', 80, '', true, ''],
+    ['', d, 'P014', 'achievement', 'Winning Creative #A-120', 80, '', true, ''],
+    ['', d, 'P014', 'action', 'High CTR Creative #B-2', 40, '', true, ''],
+    ['', d, 'P016', 'achievement', 'Winning Creative #C-31', 80, '', true, ''],
+    ['', d, 'P016', 'action', 'High CTR Creative #C-9', 40, '', true, ''],
+    ['', d, 'P015', 'action', 'High CTR Creative #D-5', 40, '', true, ''],
+    ['', d, 'P002', 'achievement', 'First order of the day (First Blood)', 10, '', true, ''],
+    ['', d, 'P002', 'mvp', 'Daily MVP', 50, '', true, ''],
+    ['', d, 'P002', 'mission', 'Publish ≥1 ad', 10, '', true, '']
+  ];
+  exp.getRange(2, 1, expRows.length, 9).setValues(expRows);
+
+  // timestamp, player_id, tag, icon, description, exp
+  var feedRows = [
+    [at(9, 12),  'P009', 'FIRST BLOOD', '⚔️', 'First order of the day', 10],
+    [at(11, 47), 'P014', 'WINNING CREATIVE', '🎯', 'Creative #A-114 hit 10 purchases', 80],
+    [at(14, 3),  'P002', 'DOUBLE KILL', '⚔️⚔️', '10 purchases in a single day', 20],
+    [at(15, 26), 'P015', 'ASSIST', '🤝', 'Helped Azim re-cut a live ad', 15],
+    [at(17, 51), 'P002', 'SAVAGE', '💀', '3-day ROAS target streak', 60]
+  ];
+  feed.getRange(2, 1, feedRows.length, 6).setValues(feedRows);
+
+  try { CacheService.getScriptCache().removeAll(['state', 'shop']); } catch (e) {}
+
+  SpreadsheetApp.getUi().alert('Demo data loaded!',
+    'Open the app and /tv — within ~60s the Boss drops to ~22%, rankings fill, and the achievement feed goes live.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
