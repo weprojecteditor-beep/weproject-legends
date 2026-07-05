@@ -204,6 +204,19 @@ function getPlayer(id, pin) {
   var rank = rankInfo(seasonExp, cfg);
   var gold = goldBalance(id, allExp);
 
+  // This player's redemption history (most recent first) with live status.
+  var myRedemptions = getRows("Redemptions")
+    .filter(function (rd) { return rd.player_id === id; })
+    .sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); })
+    .map(function (rd) {
+      return {
+        timestamp: dateTimeStr(rd.timestamp),
+        itemName: rd.item_name,
+        goldCost: num(rd.gold_cost),
+        status: String(rd.status || "pending"),
+      };
+    });
+
   var recentLog = mine
     .slice()
     .sort(function (a, b) { return new Date(b.date) - new Date(a.date); })
@@ -233,7 +246,8 @@ function getPlayer(id, pin) {
     gold: gold,
     todayExp: todayExp,
     badges: badges,
-    recentLog: recentLog
+    recentLog: recentLog,
+    redemptions: myRedemptions
   };
 }
 

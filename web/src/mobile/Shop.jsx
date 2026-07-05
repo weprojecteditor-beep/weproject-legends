@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { C, fmt } from "../theme.js";
-import { Panel } from "../ui.jsx";
+import { Panel, SectionTitle } from "../ui.jsx";
 
-export default function Shop({ items, gold, onRedeem }) {
+// Sheet status -> friendly label + color
+const STATUS_META = {
+  pending: { label: "Pending", color: C.gold },
+  approved: { label: "Approved", color: C.exp },
+  fulfilled: { label: "Claimed", color: C.green },
+  rejected: { label: "Rejected", color: C.hp },
+};
+
+export default function Shop({ items, gold, onRedeem, redemptions = [] }) {
   const [busyId, setBusyId] = useState(null);
 
   const handle = async (item) => {
@@ -80,6 +88,45 @@ export default function Shop({ items, gold, onRedeem }) {
           );
         })}
       </div>
+
+      <Panel>
+        <SectionTitle>MY REDEMPTIONS</SectionTitle>
+        {redemptions.length === 0 ? (
+          <div className="text-sm text-center py-3" style={{ color: C.dim }}>
+            No redemptions yet.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {redemptions.map((r, i) => {
+              const meta = STATUS_META[r.status] || { label: r.status, color: C.dim };
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate font-semibold">{r.itemName}</div>
+                    <div className="text-xs" style={{ color: C.dim }}>
+                      {r.timestamp} · 🪙 {fmt(r.goldCost)}
+                    </div>
+                  </div>
+                  <span
+                    className="text-xs font-semibold rounded-full px-2 py-0.5"
+                    style={{
+                      color: meta.color,
+                      border: `1px solid ${meta.color}66`,
+                      background: `${meta.color}1A`,
+                    }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

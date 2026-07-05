@@ -146,7 +146,12 @@ function Shell({ auth, onLogout }) {
         {tab === "battle" && state.data && <Battlefield state={state.data} />}
         {tab === "hero" && player.data && <Hero player={player.data} />}
         {tab === "shop" && shop.data && player.data && (
-          <Shop items={shop.data} gold={gold} onRedeem={doRedeem} />
+          <Shop
+            items={shop.data}
+            gold={gold}
+            onRedeem={doRedeem}
+            redemptions={player.data.redemptions || []}
+          />
         )}
       </div>
 

@@ -6,6 +6,9 @@ web/dist
 web/.env
 web/.env.local
 
+# local machine settings (may contain tokens/paths — never publish)
+.claude/settings.local.json
+
 # OS / editor
 .DS_Store
 *.log
