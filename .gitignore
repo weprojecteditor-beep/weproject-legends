@@ -1,0 +1,11 @@
+# dependencies / build output
+web/node_modules
+web/dist
+
+# env files (never commit your API URL secret-ish config)
+web/.env
+web/.env.local
+
+# OS / editor
+.DS_Store
+*.log

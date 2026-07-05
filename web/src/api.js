@@ -1,0 +1,34 @@
+// ---------- Apps Script Web App client ----------
+// The base URL is your deployed /exec endpoint, set in .env as VITE_API_URL.
+const API_URL = import.meta.env.VITE_API_URL;
+
+if (!API_URL) {
+  // Surfaced clearly instead of a confusing "undefined?action=..." fetch.
+  console.error("VITE_API_URL is not set. Copy web/.env.example to web/.env and paste your /exec URL.");
+}
+
+async function apiGet(params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${API_URL}?${qs}`, { redirect: "follow" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+export const getState = () => apiGet({ action: "state" });
+export const getPlayer = (id, pin) => apiGet({ action: "player", id, pin });
+export const getShop = () => apiGet({ action: "shop" });
+
+// POST as text/plain so the browser treats it as a "simple request" and skips
+// the CORS preflight that Apps Script can't answer. Body is still JSON.
+export async function redeem(playerId, pin, itemId) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ playerId, pin, itemId }),
+    redirect: "follow",
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
