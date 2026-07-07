@@ -843,3 +843,119 @@ function loadDemoData() {
     'EXP_Log + Achievements_Feed populated. Personal Damage and this week\'s Crystal War rope will reflect it once Api.gs (Phase 2) reads the new amount_rm/category shape.',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
+
+/**
+ * FULL CRYSTAL WAR DEMO — seeds a Wellous enemy team + both sides' revenue so
+ * the Crystal War, Lane Matchups and TV broadcast all light up with a real fight.
+ *
+ * What it does (run THIS function):
+ *   • Appends 8 Wellous players (P101–P108, team=wellous) if not already there.
+ *   • REPLACES EXP_Log + Achievements_Feed with a dated-today dataset for BOTH teams.
+ *   • Result this week: WeProject ~779k vs Wellous ~620k → rope leans WeProject,
+ *     with one KO on the board (Nizam 2× Bella). Delete the rows to reset.
+ *
+ * Does NOT touch your real WeProject players / PINs / Config.
+ */
+function loadDemoWar() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var playersSheet = ss.getSheetByName('Players');
+  var exp = ss.getSheetByName('EXP_Log');
+  var feed = ss.getSheetByName('Achievements_Feed');
+  if (!playersSheet || !exp || !feed) {
+    SpreadsheetApp.getUi().alert('Run setupWeprojectLegends or migrateExistingSheetToV5_1 first.');
+    return;
+  }
+
+  var d = new Date();
+  function at(h, m) { var x = new Date(); x.setHours(h, m, 0, 0); return x; }
+
+  // 1. Ensure the Wellous roster exists (idempotent, header-mapped so column order can't drift)
+  var pHeaders = playersSheet.getRange(1, 1, 1, playersSheet.getLastColumn()).getValues()[0];
+  var col = {};
+  pHeaders.forEach(function (h, i) { col[h] = i; });
+  var existingIds = {};
+  getRows('Players').forEach(function (p) { existingIds[p.player_id] = true; });
+
+  var wellous = [
+    ['P101', 'Farah',    'Marketer', '🦂'],
+    ['P102', 'Haziq',    'Marketer', '🐉'],
+    ['P103', 'Mei Ling', 'Marketer', '🦅'],
+    ['P104', 'Ravi',     'Marketer', '🔱'],
+    ['P105', 'Zara',     'LiveHost', '🌹'],
+    ['P106', 'Bella',    'LiveHost', '💫'],
+    ['P107', 'Daniel',   'Editor',   '🎥'],
+    ['P108', 'Aisyah',   'Editor',   '🖌️']
+  ];
+  var toAppend = [];
+  wellous.forEach(function (w) {
+    if (existingIds[w[0]]) return;
+    var row = [];
+    for (var i = 0; i < pHeaders.length; i++) row.push('');
+    row[col['player_id']] = w[0];
+    row[col['team']]      = 'wellous';
+    row[col['name']]      = w[1];
+    row[col['role']]      = w[2];
+    if (col['avatar'] != null) row[col['avatar']] = w[3];
+    row[col['active']]    = true;
+    toAppend.push(row);
+  });
+  if (toAppend.length) {
+    playersSheet.getRange(playersSheet.getLastRow() + 1, 1, toAppend.length, pHeaders.length).setValues(toAppend);
+  }
+
+  // 2. Rewrite EXP_Log with both teams' revenue (dated today = inside this week)
+  if (exp.getLastRow() > 1) exp.getRange(2, 1, exp.getLastRow() - 1, 9).clearContent();
+  // log_id, date, player_id, category, item, exp, amount_rm, approved, note
+  var expRows = [
+    // --- WeProject (~779,400) ---
+    ['', d, 'P002', 'action', 'Closed RM 212,300 in ad revenue', 4200, 212300, true, ''],
+    ['', d, 'P009', 'action', 'Live session drove RM 154,200', 3700, 154200, true, ''],
+    ['', d, 'P003', 'action', 'Closed RM 128,800 campaign', 5600, 128800, true, ''],
+    ['', d, 'P004', 'action', 'RM 88,700 in sales', 2100, 88700, true, ''],
+    ['', d, 'P010', 'action', 'Live RM 64,200', 1200, 64200, true, ''],
+    ['', d, 'P006', 'action', 'RM 50,000 campaign', 1500, 50000, true, ''],
+    ['', d, 'P007', 'action', 'RM 41,200 in sales', 900, 41200, true, ''],
+    ['', d, 'P008', 'action', 'RM 40,000 sales', 700, 40000, true, ''],
+    ['', d, 'P014', 'achievement', 'Winning Creative #A-114', 80, '', true, ''],
+    ['', d, 'P014', 'achievement', 'Winning Creative #A-120', 80, '', true, ''],
+    ['', d, 'P014', 'action', 'High CTR Creative #B-2', 40, '', true, ''],
+    ['', d, 'P016', 'achievement', 'Winning Creative #C-31', 80, '', true, ''],
+    ['', d, 'P016', 'action', 'High CTR Creative #C-9', 40, '', true, ''],
+    ['', d, 'P015', 'action', 'High CTR Creative #D-5', 40, '', true, ''],
+    ['', d, 'P002', 'achievement', 'First order of the day (First Blood)', 10, '', true, ''],
+    ['', d, 'P002', 'mvp', 'Daily MVP', 50, '', true, ''],
+    ['', d, 'P002', 'mission', 'Publish ≥1 ad', 10, '', true, ''],
+    // --- Wellous (~620,000) ---
+    ['', d, 'P101', 'action', 'Closed RM 180,000 campaign', 3600, 180000, true, ''],
+    ['', d, 'P102', 'action', 'RM 140,000 in sales', 2800, 140000, true, ''],
+    ['', d, 'P103', 'action', 'RM 110,000 campaign', 2200, 110000, true, ''],
+    ['', d, 'P104', 'action', 'RM 95,000 in sales', 1900, 95000, true, ''],
+    ['', d, 'P105', 'action', 'Live RM 70,000', 1400, 70000, true, ''],
+    ['', d, 'P106', 'action', 'Live RM 25,000', 500, 25000, true, '']
+  ];
+  exp.getRange(2, 1, expRows.length, 9).setValues(expRows);
+
+  // 3. Rewrite Achievements_Feed — both teams (TV mixed feed carries team badges)
+  if (feed.getLastRow() > 1) feed.getRange(2, 1, feed.getLastRow() - 1, 6).clearContent();
+  // timestamp, player_id, tag, icon, description, exp
+  var feedRows = [
+    [at(9, 12),  'P009', 'FIRST BLOOD', '⚔️', 'First order of the day', 10],
+    [at(10, 30), 'P101', 'FIRST BLOOD', '⚔️', 'Enemy draws first blood', 10],
+    [at(11, 47), 'P014', 'WINNING CREATIVE', '🎯', 'Creative #A-114 hit 10 purchases', 80],
+    [at(14, 3),  'P002', 'DOUBLE KILL', '⚔️⚔️', '10 purchases in a single day', 20],
+    [at(15, 26), 'P015', 'ASSIST', '🤝', 'Helped Azim re-cut a live ad', 15],
+    [at(16, 15), 'P105', 'SAVAGE', '💀', 'Enemy live-closing streak', 60],
+    [at(17, 51), 'P002', 'SAVAGE', '💀', '3-day ROAS target streak', 60]
+  ];
+  feed.getRange(2, 1, feedRows.length, 6).setValues(feedRows);
+
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
+
+  SpreadsheetApp.getUi().alert('Crystal War demo loaded!',
+    'Wellous team + both sides\' revenue seeded. Within ~60s:\n' +
+    '• Crystal War rope leans WeProject (~779k vs ~620k)\n' +
+    '• Lane Matchups fill in, with one KO (Nizam 2× Bella)\n' +
+    '• TV mixed feed shows both teams\n\n' +
+    'Open the app and /tv to see it. Delete the added rows to reset.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
