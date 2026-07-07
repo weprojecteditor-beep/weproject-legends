@@ -62,7 +62,7 @@
  */
 
 var CACHE_SECONDS = 60;
-var CLASS_FAMILY_BY_ROLE = { Marketer: 'Carry', LiveHost: 'Fighter', Editor: 'Support' };
+var CLASS_FAMILY_BY_ROLE = { Marketer: 'Carry', LiveHost: 'Fighter', Editor: 'Support', Salesperson: 'Slayer' };
 
 /* ================================================================== */
 /* Routing                                                             */

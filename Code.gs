@@ -29,7 +29,8 @@ var CATEGORIES = ['mission', 'action', 'milestone', 'achievement', 'assist', 'mv
 var REDEMPTION_STATUSES = ['pending', 'approved', 'fulfilled', 'rejected'];
 var MISSION_LOG_STATUSES = ['pending', 'approved', 'rejected'];
 var TEAMS = ['weproject', 'wellous'];
-var ROLE_OPTIONS = ['Marketer', 'LiveHost', 'Editor', 'Any']; // 'Any' = applies to every role
+var ROLE_OPTIONS = ['Marketer', 'LiveHost', 'Editor', 'Salesperson', 'Any']; // 'Any' = applies to every role
+var PLAYER_ROLES = ['Marketer', 'LiveHost', 'Editor', 'Salesperson']; // roles a person can hold (Players tab dropdown)
 var BUFF_TYPES = ['power', 'lord'];
 var BUFF_STATUSES = ['alive', 'slain'];
 var CRYSTAL_BROKEN_OPTIONS = ['none', 'weproject', 'wellous'];
@@ -39,10 +40,24 @@ var LORD_SIDE_OPTIONS = ['none', 'weproject', 'wellous'];
 // which hero within their role's class family. Kept here for reference —
 // Api.gs (Phase 2) enforces this mapping in setHeroClass.
 var HERO_CLASS_BY_ROLE = {
-  Marketer: ['Marksman', 'Mage', 'Assassin'],   // Carry
-  LiveHost: ['Fighter', 'Tank', 'Berserker'],   // Fighter
-  Editor:   ['Support', 'Bard', 'Summoner']     // Support
+  Marketer:    ['Marksman', 'Mage', 'Assassin'],   // Carry
+  LiveHost:    ['Fighter', 'Tank', 'Berserker'],   // Fighter
+  Editor:      ['Support', 'Bard', 'Summoner'],    // Support
+  Salesperson: ['Marksman', 'Assassin', 'Berserker'] // Slayer (Wellous sales)
 };
+
+// Real Wellous roster (P101–P108): [player_id, name, role, avatar].
+// Salespeople earn revenue; Editors / the Marketer don't contribute to sales.
+var WELLOUS_ROSTER = [
+  ['P101', 'Yodaa',    'Salesperson', '🦂'],
+  ['P102', 'Vicky',    'Salesperson', '🐉'],
+  ['P103', 'Lilian',   'Salesperson', '🦅'],
+  ['P104', 'Janice',   'Salesperson', '🔱'],
+  ['P105', 'Fish',     'Salesperson', '🐟'],
+  ['P106', 'Sin Huey', 'Editor',      '🖌️'],
+  ['P107', 'Wei Hao',  'Editor',      '🎥'],
+  ['P108', 'Billy',    'Marketer',    '📣']
+];
 
 var GROW_ROWS = 2000; // apply validation this many rows down for sheets that grow
 var SMALL_ROWS = 200;
@@ -161,7 +176,7 @@ function migratePlayersTab(ss) {
   var newHeaders = ['player_id', 'team', 'name', 'role', 'hero_class', 'gender_pref', 'pin', 'avatar', 'join_date', 'active'];
   rewriteSheet(sheet, newHeaders, newRows);
   applyDropdown(sheet, 2, SMALL_ROWS, TEAMS);   // team
-  applyDropdown(sheet, 4, SMALL_ROWS, ['Marketer', 'LiveHost', 'Editor']); // role
+  applyDropdown(sheet, 4, SMALL_ROWS, PLAYER_ROLES); // role
   applyCheckbox(sheet, 10, SMALL_ROWS);         // active
   return true;
 }
@@ -355,7 +370,7 @@ function buildPlayers(ss) {
 
   var sheet = makeSheet(ss, 'Players', headers, rows);
   applyDropdown(sheet, 2, SMALL_ROWS, TEAMS);
-  applyDropdown(sheet, 4, SMALL_ROWS, ['Marketer', 'LiveHost', 'Editor']);
+  applyDropdown(sheet, 4, SMALL_ROWS, PLAYER_ROLES);
   applyCheckbox(sheet, 10, SMALL_ROWS); // active
 }
 
@@ -876,16 +891,7 @@ function loadDemoWar() {
   var existingIds = {};
   getRows('Players').forEach(function (p) { existingIds[p.player_id] = true; });
 
-  var wellous = [
-    ['P101', 'Farah',    'Marketer', '🦂'],
-    ['P102', 'Haziq',    'Marketer', '🐉'],
-    ['P103', 'Mei Ling', 'Marketer', '🦅'],
-    ['P104', 'Ravi',     'Marketer', '🔱'],
-    ['P105', 'Zara',     'LiveHost', '🌹'],
-    ['P106', 'Bella',    'LiveHost', '💫'],
-    ['P107', 'Daniel',   'Editor',   '🎥'],
-    ['P108', 'Aisyah',   'Editor',   '🖌️']
-  ];
+  var wellous = WELLOUS_ROSTER;
   var toAppend = [];
   wellous.forEach(function (w) {
     if (existingIds[w[0]]) return;
@@ -925,13 +931,12 @@ function loadDemoWar() {
     ['', d, 'P002', 'achievement', 'First order of the day (First Blood)', 10, '', true, ''],
     ['', d, 'P002', 'mvp', 'Daily MVP', 50, '', true, ''],
     ['', d, 'P002', 'mission', 'Publish ≥1 ad', 10, '', true, ''],
-    // --- Wellous (~620,000) ---
-    ['', d, 'P101', 'action', 'Closed RM 180,000 campaign', 3600, 180000, true, ''],
-    ['', d, 'P102', 'action', 'RM 140,000 in sales', 2800, 140000, true, ''],
-    ['', d, 'P103', 'action', 'RM 110,000 campaign', 2200, 110000, true, ''],
-    ['', d, 'P104', 'action', 'RM 95,000 in sales', 1900, 95000, true, ''],
-    ['', d, 'P105', 'action', 'Live RM 70,000', 1400, 70000, true, ''],
-    ['', d, 'P106', 'action', 'Live RM 25,000', 500, 25000, true, '']
+    // --- Wellous sales (~620,000; only Salespeople earn revenue) ---
+    ['', d, 'P101', 'action', 'Closed RM 180,000 in sales', 3600, 180000, true, ''],
+    ['', d, 'P102', 'action', 'RM 150,000 in sales', 3000, 150000, true, ''],
+    ['', d, 'P103', 'action', 'RM 120,000 in sales', 2400, 120000, true, ''],
+    ['', d, 'P104', 'action', 'RM 100,000 in sales', 2000, 100000, true, ''],
+    ['', d, 'P105', 'action', 'RM 70,000 in sales', 1400, 70000, true, '']
   ];
   exp.getRange(2, 1, expRows.length, 9).setValues(expRows);
 
@@ -958,4 +963,166 @@ function loadDemoWar() {
     '• TV mixed feed shows both teams\n\n' +
     'Open the app and /tv to see it. Delete the added rows to reset.',
     SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * Writes the real Wellous team into the Players tab (P101–P108).
+ * Updates rows that already exist (e.g. the demo names) instead of duplicating,
+ * and makes sure the role dropdown allows "Salesperson". Run THIS function.
+ * Their PINs and daily missions are set up separately (Players tab / Missions tab).
+ */
+function setWellousRoster() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var playersSheet = ss.getSheetByName('Players');
+  if (!playersSheet) { SpreadsheetApp.getUi().alert('Players tab not found.'); return; }
+
+  var pHeaders = playersSheet.getRange(1, 1, 1, playersSheet.getLastColumn()).getValues()[0];
+  var col = {};
+  pHeaders.forEach(function (h, i) { col[h] = i; });
+
+  applyDropdown(playersSheet, col['role'] + 1, SMALL_ROWS, PLAYER_ROLES); // allow Salesperson
+
+  var lastRow = playersSheet.getLastRow();
+  var data = lastRow > 1 ? playersSheet.getRange(2, 1, lastRow - 1, pHeaders.length).getValues() : [];
+  var rowIndexById = {};
+  for (var i = 0; i < data.length; i++) rowIndexById[data[i][col['player_id']]] = i + 2;
+
+  var added = [];
+  WELLOUS_ROSTER.forEach(function (w) {
+    var existingRow = rowIndexById[w[0]];
+    var rowVals;
+    if (existingRow) {
+      rowVals = data[existingRow - 2];
+    } else {
+      rowVals = [];
+      for (var k = 0; k < pHeaders.length; k++) rowVals.push('');
+    }
+    rowVals[col['player_id']] = w[0];
+    rowVals[col['team']] = 'wellous';
+    rowVals[col['name']] = w[1];
+    rowVals[col['role']] = w[2];
+    if (col['avatar'] != null) rowVals[col['avatar']] = w[3];
+    rowVals[col['active']] = true;
+    if (existingRow) {
+      playersSheet.getRange(existingRow, 1, 1, pHeaders.length).setValues([rowVals]);
+    } else {
+      playersSheet.appendRow(rowVals);
+      added.push(w[1]);
+    }
+  });
+
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'roster']); } catch (e) {}
+
+  SpreadsheetApp.getUi().alert('Wellous roster set',
+    'Written to the Players tab (P101–P108):\n\n' +
+    'Salesperson: Yodaa, Vicky, Lilian, Janice, Fish\n' +
+    'Editor: Sin Huey, Wei Hao\n' +
+    'Marketer: Billy\n\n' +
+    'Next: give each a 4-digit PIN in the Players tab, and add their daily missions in the Missions tab (role = Salesperson / Editor / Marketer, team = wellous).',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * SIMPLIFY THE SHEET for the GM. Builds a plain-English HOME tab, orders +
+ * colors the tabs used day-to-day, and HIDES the setup tabs (not deleted —
+ * unhide anytime via the ☰ "All Sheets" icon or View → Hidden sheets).
+ * Safe + reversible. Run THIS function.
+ */
+function simplifySheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildHomeTab(ss);
+
+  var visible = [
+    ['HOME',              '#34A853'],
+    ['EXP_Log',           '#F5C542'],
+    ['Achievements_Feed', '#F5C542'],
+    ['Redemptions',       '#EA4335'],
+    ['Mission_Log',       '#EA4335'],
+    ['Players',           '#9AA0A6'],
+    ['Guide',             '#34A853']
+  ];
+  var hidden = ['Shop', 'Actions', 'Missions', 'Config', 'Crystal_War', 'Buffs', 'Presets'];
+
+  var pos = 1;
+  visible.forEach(function (v) {
+    var sh = ss.getSheetByName(v[0]);
+    if (!sh) return;
+    sh.showSheet();
+    ss.setActiveSheet(sh);
+    ss.moveActiveSheet(pos++);
+    sh.setTabColor(v[1]);
+  });
+
+  ss.setActiveSheet(ss.getSheetByName('HOME')); // can't hide the active sheet
+  hidden.forEach(function (name) {
+    var sh = ss.getSheetByName(name);
+    if (sh) { sh.setTabColor('#555555'); sh.hideSheet(); }
+  });
+
+  SpreadsheetApp.getUi().alert('Sheet simplified',
+    'The GM now sees only the day-to-day tabs:\n\n' +
+    'HOME — start here\n' +
+    'EXP_Log — record points & sales\n' +
+    'Achievements_Feed — TV highlights\n' +
+    'Redemptions — approve shop redeems\n' +
+    'Mission_Log — approve missions\n' +
+    'Players — people & PINs\n' +
+    'Guide — full rules reference\n\n' +
+    'Setup tabs (Shop, Actions, Missions, Config, Crystal_War, Buffs, Presets) are HIDDEN, not deleted. ' +
+    'Unhide them anytime: bottom-left ☰ "All Sheets" icon, or View menu → Hidden sheets.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/** Plain-English one-page instructions shown as the first tab. */
+function buildHomeTab(ss) {
+  var sheet = ss.getSheetByName('HOME');
+  if (sheet) { sheet.clear(); } else { sheet = ss.insertSheet('HOME'); }
+
+  var content = [
+    { t: 'title',   a: 'WEPROJECT LEGENDS — START HERE', b: '' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '⭐ EVERY DAY — 3 THINGS', b: '' },
+    { t: 'step', a: '1.  In EXP_Log: pick the person, pick the task, tick "approved". For a real sale, also type the RM value in amount_rm.', b: '' },
+    { t: 'step', a: '2.  (Optional) Add standout moments to Achievements_Feed — the highlights shown on the office TV.', b: '' },
+    { t: 'step', a: '3.  In Redemptions & Mission_Log: set anything "pending" to approved or rejected.', b: '' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '📖 WHERE THINGS ARE', b: '' },
+    { t: 'kv', a: 'EXP_Log', b: 'The daily scoreboard — every point & sale. The tab you use most.' },
+    { t: 'kv', a: 'Achievements_Feed', b: 'Highlights for the TV screen.' },
+    { t: 'kv', a: 'Redemptions', b: 'Shop redeems waiting for your approval.' },
+    { t: 'kv', a: 'Mission_Log', b: 'Missions players submitted, waiting for approval.' },
+    { t: 'kv', a: 'Players', b: 'Everyone on both teams + their 4-digit PINs.' },
+    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how Crystal War works.' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '⚙️ SETUP TABS ARE HIDDEN', b: '' },
+    { t: 'step', a: 'Shop / Actions / Missions / Config / Crystal_War / Buffs / Presets are hidden to keep things clean. To show them: click the ☰ "All Sheets" icon at the bottom-left, or View → Hidden sheets. Touch them only to change prices, point values, or the season.', b: '' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '✅ GOLDEN RULES', b: '' },
+    { t: 'step', a: '• Nothing counts until you tick "approved".', b: '' },
+    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it drives the Crystal War + Damage board.', b: '' },
+    { t: 'step', a: '• To fix a mistake: add a new row with a NEGATIVE number. Never delete history.', b: '' }
+  ];
+
+  var values = content.map(function (x) { return [x.a, x.b]; });
+  sheet.getRange(1, 1, values.length, 2).setValues(values);
+
+  for (var i = 0; i < content.length; i++) {
+    var row = i + 1, t = content[i].t;
+    if (t === 'title') {
+      sheet.getRange(row, 1, 1, 2).merge().setFontSize(15).setFontWeight('bold').setFontColor('#F5C542').setBackground('#0A0D1C');
+      sheet.setRowHeight(row, 36);
+    } else if (t === 'section') {
+      sheet.getRange(row, 1, 1, 2).merge().setFontWeight('bold').setFontColor('#F5C542').setBackground('#12172B');
+    } else if (t === 'step') {
+      sheet.getRange(row, 1, 1, 2).merge().setWrap(true);
+    } else if (t === 'kv') {
+      sheet.getRange(row, 1).setFontWeight('bold');
+      sheet.getRange(row, 2).setWrap(true);
+    }
+  }
+
+  sheet.setColumnWidth(1, 230);
+  sheet.setColumnWidth(2, 640);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, values.length, 2).setVerticalAlignment('middle');
 }

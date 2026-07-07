@@ -30,11 +30,12 @@ export const TEAM_LABELS = { weproject: "WEPROJECT", wellous: "WELLOUS" };
 
 // Hero Class is locked by role (balance); these are cosmetic choices within
 // the role's class family. Mirrors Code.gs HERO_CLASS_BY_ROLE — keep in sync.
-export const CLASS_FAMILY_BY_ROLE = { Marketer: "Carry", LiveHost: "Fighter", Editor: "Support" };
+export const CLASS_FAMILY_BY_ROLE = { Marketer: "Carry", LiveHost: "Fighter", Editor: "Support", Salesperson: "Slayer" };
 export const HERO_CLASS_BY_ROLE = {
   Marketer: ["Marksman", "Mage", "Assassin"],
   LiveHost: ["Fighter", "Tank", "Berserker"],
   Editor: ["Support", "Bard", "Summoner"],
+  Salesperson: ["Marksman", "Assassin", "Berserker"],
 };
 export const HERO_ICONS = {
   Marksman: "🏹", Mage: "🔮", Assassin: "🗡️",
