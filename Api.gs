@@ -190,7 +190,16 @@ function getCrystalWarState(cfg, players, expApproved, team) {
   var wlTowers = num(row.wl_towers);
   var crystalBroken = String(row.crystal_broken || 'none');
 
+  // Draining-HP model: each team's cumulative SEASON revenue is the damage it
+  // deals to the enemy base — Tower I → Tower II → Crystal (segs = HP stages).
+  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
+  var wpSeasonRev = sumTeamRevenueInRange(players, expApproved, 'weproject', seasonStart, seasonEnd);
+  var wlSeasonRev = sumTeamRevenueInRange(players, expApproved, 'wellous', seasonStart, seasonEnd);
+  var segs = [cfgInt(cfg.base_tower1_hp, 300000), cfgInt(cfg.base_tower2_hp, 300000), cfgInt(cfg.base_crystal_hp, 400000)];
+
   var today = todayStr();
+  var wpToday = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
+  var wlToday = sumTeamRevenueInRange(players, expApproved, 'wellous', today, today);
   var lordSide = (String(row.lord_double_side || 'none') !== 'none' && dateStr(row.lord_double_date) === today)
     ? String(row.lord_double_side) : 'none';
 
@@ -198,6 +207,9 @@ function getCrystalWarState(cfg, players, expApproved, team) {
     var liveNet = t === 'weproject' ? liveNetNeutral : -liveNetNeutral;
     var ourTowers = t === 'weproject' ? wpTowers : wlTowers;
     var enemyTowers = t === 'weproject' ? wlTowers : wpTowers;
+    var dealtByUs = t === 'weproject' ? wpSeasonRev : wlSeasonRev;
+    var dealtByThem = t === 'weproject' ? wlSeasonRev : wpSeasonRev;
+    var ourToday = t === 'weproject' ? wpToday : wlToday;
     return {
       weekNo: num(row.current_week_no),
       weekStart: wb.start,
@@ -207,6 +219,10 @@ function getCrystalWarState(cfg, players, expApproved, team) {
       ourTowers: ourTowers,
       enemyTowers: enemyTowers,
       towersPerSide: towersPerSide,
+      dealtByUs: dealtByUs,       // our damage on the ENEMY base
+      dealtByThem: dealtByThem,   // enemy damage on OUR base
+      segs: segs,                 // [tower1Hp, tower2Hp, crystalHp]
+      ourToday: ourToday,         // revenue dealt today
       crystalBroken: crystalBroken === 'none' ? 'none' : (crystalBroken === t ? 'us' : 'enemy'),
       lord: { side: lordSide === 'none' ? 'none' : (lordSide === t ? 'us' : 'enemy'), date: row.lord_double_date ? dateStr(row.lord_double_date) : '' }
     };
@@ -220,6 +236,11 @@ function getCrystalWarState(cfg, players, expApproved, team) {
     wpTowers: wpTowers,
     wlTowers: wlTowers,
     towersPerSide: towersPerSide,
+    dealtByWp: wpSeasonRev,
+    dealtByWl: wlSeasonRev,
+    segs: segs,
+    wpToday: wpToday,
+    wlToday: wlToday,
     crystalBroken: crystalBroken,
     lord: { side: lordSide, date: row.lord_double_date ? dateStr(row.lord_double_date) : '' }
   };

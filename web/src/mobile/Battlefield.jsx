@@ -87,33 +87,53 @@ function Avatar({ p, size = 46 }) {
   );
 }
 
-// ── Crystal War (glowing, two bases with towers) ─────────────
-function BaseLane({ title, attackerLabel, destroyed, total, col }) {
+// ── Crystal War (draining-HP bases, ML style) ────────────────
+// Cumulative damage cascades: Tower I → Tower II → Crystal.
+const segRemain = (dealt, segs) => {
+  let d = dealt;
+  const out = [];
+  for (const s of segs) { out.push(Math.max(0, s - d)); d = Math.max(0, d - s); }
+  return out;
+};
+
+function BaseLane({ title, attackerLabel, dealt, segs, col }) {
+  const rem = segRemain(dealt, segs);
   const names = ["TOWER I", "TOWER II", "CRYSTAL"];
   const icons = ["🗼", "🗼", "💎"];
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 800, marginBottom: 5 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 800, marginBottom: 6 }}>
         <span style={{ color: col, fontFamily: "'Chakra Petch',sans-serif", letterSpacing: "0.08em" }}>{title}</span>
         <span style={{ color: C.dimmer }}>{attackerLabel}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr", gap: 6 }}>
-        {[0, 1, 2].map((i) => {
+        {segs.map((full, i) => {
+          const left = rem[i];
+          const down = left === 0;
+          const pct = full > 0 ? (left / full) * 100 : 0;
+          const active = !down && (i === 0 || rem[i - 1] === 0); // currently under attack
           const isCrystal = i === 2;
-          const down = i < destroyed;
-          const active = !down && i === destroyed;
           return (
             <div key={i} style={{
-              clipPath: CLIP_SM, padding: "8px 6px 9px", textAlign: "center",
-              background: down ? "#0A0D22" : active ? `${col}12` : C.panelSoft,
-              border: `1px solid ${down ? C.line : active ? col + "66" : C.line}`, opacity: down ? 0.55 : 1 }}>
-              <div className={isCrystal && !down ? "crystalPulse" : ""} style={{ fontSize: isCrystal ? 24 : 18,
-                filter: down ? "grayscale(1)" : active || isCrystal ? `drop-shadow(0 0 10px ${col})` : "none" }}>
+              clipPath: CLIP_SM, padding: "8px 6px 8px", textAlign: "center",
+              background: down ? "#0A0D22" : active ? `${col}14` : C.panelSoft,
+              border: `1px solid ${down ? C.line : active ? col + "88" : C.line}`, opacity: down ? 0.5 : 1 }}>
+              <div className={isCrystal && !down ? "crystalPulse" : ""} style={{ fontSize: isCrystal ? 24 : 18, color: col,
+                filter: down ? "grayscale(1)" : (active || isCrystal) ? `drop-shadow(0 0 12px ${col})` : "none" }}>
                 {down ? "💥" : icons[i]}
               </div>
-              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: down ? C.dimmer : col,
-                fontFamily: "'Chakra Petch',sans-serif", textDecoration: down ? "line-through" : "none", marginTop: 3 }}>
-                {down ? "DESTROYED" : names[i]}
+              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.06em", marginTop: 3,
+                color: down ? C.dimmer : col, fontFamily: "'Chakra Petch',sans-serif",
+                textDecoration: down ? "line-through" : "none" }}>{names[i]}</div>
+              {/* skewed draining HP bar */}
+              <div style={{ marginTop: 4, transform: "skewX(-12deg)", height: 6, background: "#02040D",
+                border: `1px solid ${col}44`, borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`,
+                  background: down ? "transparent" : `linear-gradient(90deg, ${col}88, ${col})`,
+                  boxShadow: down ? "none" : `0 0 8px ${col}`, transition: "width 1.1s cubic-bezier(.2,.8,.3,1)" }} />
+              </div>
+              <div style={{ fontSize: 7.5, marginTop: 3, color: down ? C.dimmer : C.dim }}>
+                {down ? "DESTROYED" : fmt(left) + " HP"}
               </div>
             </div>
           );
@@ -124,55 +144,55 @@ function BaseLane({ title, attackerLabel, destroyed, total, col }) {
 }
 
 function CrystalWar({ cw }) {
-  const total = cw.towersPerSide || 3;
-  const weWonOfEnemy = cw.ourTowers || 0;   // enemy towers WE destroyed
-  const enemyWonOfUs = cw.enemyTowers || 0; // our towers THEY destroyed
-  const leading = cw.liveLeader === "us";
-  const even = cw.liveLeader === "even";
+  const segs = cw.segs && cw.segs.length ? cw.segs : [300000, 300000, 400000];
+  const dealtByUs = cw.dealtByUs || 0;     // our damage on the ENEMY base
+  const dealtByThem = cw.dealtByThem || 0; // enemy damage on OUR base
+  const enemyRem = segRemain(dealtByUs, segs).reduce((a, b) => a + b, 0);
+  const ourRem = segRemain(dealtByThem, segs).reduce((a, b) => a + b, 0);
+  const enemyDown = segRemain(dealtByUs, segs)[2] === 0;
+  const ourDown = segRemain(dealtByThem, segs)[2] === 0;
+  const winning = enemyRem < ourRem;
+  const even = enemyRem === ourRem;
   return (
     <Frame glow={C.cyan} pad={0}>
       <div style={{ padding: "16px 14px 12px",
-        background: `radial-gradient(ellipse 70% 90% at 12% 30%, ${C.cyan}12 0%, transparent 55%),
-                     radial-gradient(ellipse 70% 90% at 88% 30%, ${C.enemy}10 0%, transparent 55%)` }}>
+        background: `radial-gradient(ellipse 70% 90% at 12% 25%, ${C.cyan}16 0%, transparent 55%),
+                     radial-gradient(ellipse 70% 90% at 88% 25%, ${C.enemy}14 0%, transparent 55%)` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 14 }}>
-          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, color: C.cyan }}>WE PROJECT</span>
-          <div style={{ width: 38, height: 38, flexShrink: 0, transform: "rotate(45deg)", background: GOLD_GRAD, padding: 1.5, boxShadow: `0 0 24px ${C.gold}88` }}>
+          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 13, color: C.cyan, textShadow: `0 0 10px ${C.cyan}66` }}>WE PROJECT</span>
+          <div style={{ width: 40, height: 40, flexShrink: 0, transform: "rotate(45deg)", background: GOLD_GRAD, padding: 1.5, boxShadow: `0 0 26px ${C.gold}99` }}>
             <div style={{ width: "100%", height: "100%", background: "#0A0F28", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 13, color: C.goldHi, textShadow: `0 0 12px ${C.gold}` }}>VS</span>
+              <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 14, color: C.goldHi, textShadow: `0 0 12px ${C.gold}` }}>VS</span>
             </div>
           </div>
-          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, color: "#FF7777" }}>WELLOUS</span>
+          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 13, color: "#FF7777", textShadow: "0 0 10px #FF444466" }}>WELLOUS</span>
         </div>
+
+        {(enemyDown || ourDown) && (
+          <div style={{ textAlign: "center", marginBottom: 12, padding: "6px", clipPath: CLIP_SM,
+            background: `${C.gold}22`, border: `1px solid ${C.gold}66`, fontFamily: "'Chakra Petch',sans-serif",
+            fontWeight: 800, fontSize: 12, color: C.gold, textShadow: `0 0 10px ${C.gold}` }}>
+            {enemyDown ? "🏆 CRYSTAL SHATTERED — WE PROJECT WINS" : "💔 OUR CRYSTAL FELL — WELLOUS WINS"}
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <BaseLane title="⚔ ENEMY BASE" attackerLabel="WE ATTACK →" destroyed={weWonOfEnemy} total={total} col={C.enemy} />
-          <BaseLane title="🛡 OUR BASE" attackerLabel="← WELLOUS ATTACKS" destroyed={enemyWonOfUs} total={total} col={C.cyan} />
+          <BaseLane title="⚔ ENEMY BASE" attackerLabel="WE ATTACK →" dealt={dealtByUs} segs={segs} col={C.enemy} />
+          <BaseLane title="🛡 OUR BASE" attackerLabel="← WELLOUS ATTACKS" dealt={dealtByThem} segs={segs} col={C.cyan} />
         </div>
 
-        {/* This week net lead */}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, marginBottom: 4 }}>
-            <span style={{ color: C.cyan }}>You +{fmt(Math.max(0, cw.liveNet))}</span>
-            <span style={{ color: C.dim }}>THIS WEEK · NET LEAD</span>
-            <span style={{ color: "#FF7777" }}>Enemy +{fmt(Math.max(0, -cw.liveNet))}</span>
-          </div>
-          <div style={{ position: "relative", height: 12, background: "#02040D", border: `1px solid ${C.line}`, borderRadius: 6, overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 2, background: C.line }} />
-            <div style={{ position: "absolute", top: 0, bottom: 0, left: `${Math.max(2, Math.min(98, 50 + (cw.liveNet / 20000) * 45))}% `,
-              width: 10, marginLeft: -5, background: leading ? C.cyan : even ? C.dim : C.enemy,
-              boxShadow: `0 0 10px ${leading ? C.cyan : C.enemy}`, transition: "left 1s ease" }} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+          <span style={{ fontSize: 10, color: C.dim }}>
+            Today: <b style={{ color: C.gold }}>{fmt(cw.ourToday || 0)} DMG</b> dealt
+          </span>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", fontFamily: "'Chakra Petch',sans-serif",
-            color: leading ? C.cyan : even ? C.dim : "#FF7777", textShadow: `0 0 10px ${leading ? C.cyan : C.enemy}` }}>
-            {even ? "— EVEN —" : leading ? "▲ LEADING" : "▼ BEHIND"}
+            color: even ? C.dim : winning ? C.cyan : "#FF7777", textShadow: `0 0 10px ${winning ? C.cyan : C.enemy}` }}>
+            {even ? "— EVEN —" : winning ? "▲ LEADING" : "▼ BEHIND"}
           </span>
         </div>
       </div>
       <div style={{ borderTop: `1px solid ${C.line}`, padding: "7px 14px", background: "#070C24", textAlign: "center", fontSize: 9.5, color: C.dim }}>
-        ⚡ <b style={{ color: C.goldHi }}>ONE FIGHT, TWO FRONTS</b> — every RM1 of revenue pushes the enemy base
+        ⚡ <b style={{ color: C.goldHi }}>CRYSTAL WAR</b> — every RM1 of revenue drains the enemy base
       </div>
     </Frame>
   );
