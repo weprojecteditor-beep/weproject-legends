@@ -1,5 +1,4 @@
-// Shared "Mobile Legends" design kit — used by Hero / Shop / Login / TV / shell.
-// Battlefield.jsx keeps its own copy of these (same values) so it stays isolated.
+// Shared "Mobile Legends" design kit — ported from weproject-legends-dashboard.jsx.
 import { C } from "./theme.js";
 
 export { C };
@@ -12,25 +11,34 @@ export const RANKS = {
   Warrior: "#9CA3AF", Elite: "#CD7F32", Master: "#C8CDD8",
   Epic: "#A86BFF", Legend: "#F5C542", Mythic: "#FF3B5C",
 };
+export const ROLES = {
+  Marketer: { color: "#3EE0F0", tag: "MARKETER" },
+  LiveHost: { color: "#FF6B9D", tag: "LIVE HOST" },
+  Editor: { color: "#A86BFF", tag: "EDITOR" },
+  Salesperson: { color: "#FFB800", tag: "SALESPERSON" },
+};
 export const ROLE_COLOR = { Marketer: "#3EE0F0", LiveHost: "#FF6B9D", Editor: "#A86BFF", Salesperson: "#FFB800" };
 
-// 9 classes → the 3 portraits we have (chosen: reuse the 3).
-export const HERO_IMG = {
-  Marksman: "/avatars/marksman.png", Mage: "/avatars/assassin.png", Assassin: "/avatars/assassin.png",
-  Fighter: "/avatars/fighter.png", Tank: "/avatars/fighter.png", Berserker: "/avatars/fighter.png",
-  Support: "/avatars/assassin.png", Bard: "/avatars/assassin.png", Summoner: "/avatars/assassin.png",
+// 9 classes → the 3 portraits we have, each with ML-style metadata.
+export const CLASSES = {
+  Marksman: { label: "MARKSMAN", icon: "🏹", color: "#FFB800", img: "/avatars/marksman.png", desc: "Precision carry" },
+  Mage: { label: "MAGE", icon: "🔮", color: "#A86BFF", img: "/avatars/assassin.png", desc: "Burst caster" },
+  Assassin: { label: "ASSASSIN", icon: "🗡️", color: "#B368FF", img: "/avatars/assassin.png", desc: "Burst, solo carry" },
+  Fighter: { label: "FIGHTER", icon: "⚔️", color: "#FF5544", img: "/avatars/fighter.png", desc: "Frontline damage" },
+  Tank: { label: "TANK", icon: "🛡️", color: "#4488FF", img: "/avatars/fighter.png", desc: "Protect the team" },
+  Berserker: { label: "BERSERKER", icon: "🪓", color: "#FF7A2A", img: "/avatars/fighter.png", desc: "Relentless" },
+  Support: { label: "SUPPORT", icon: "🤝", color: "#4ADE80", img: "/avatars/assassin.png", desc: "Enable others" },
+  Bard: { label: "BARD", icon: "🎵", color: "#4ADE80", img: "/avatars/assassin.png", desc: "Buff & tempo" },
+  Summoner: { label: "SUMMONER", icon: "✨", color: "#4ADE80", img: "/avatars/assassin.png", desc: "Command minions" },
 };
-export const CLASS_COLOR = {
-  Marksman: "#FFB800", Mage: "#A86BFF", Assassin: "#B368FF",
-  Fighter: "#FF5544", Tank: "#4488FF", Berserker: "#FF7A2A",
-  Support: "#4ADE80", Bard: "#4ADE80", Summoner: "#4ADE80",
-};
+export const HERO_IMG = Object.keys(CLASSES).reduce((m, k) => { m[k] = CLASSES[k].img; return m; }, {});
+export const CLASS_COLOR = Object.keys(CLASSES).reduce((m, k) => { m[k] = CLASSES[k].color; return m; }, {});
 export const ROLE_DEFAULT_CLASS = { Marketer: "Marksman", LiveHost: "Fighter", Editor: "Assassin", Salesperson: "Marksman" };
 
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 export const heroClassOf = (heroClass, role) => heroClass || ROLE_DEFAULT_CLASS[role] || "Fighter";
+export const classOf = (heroClass, role) => CLASSES[heroClassOf(heroClass, role)] || CLASSES.Fighter;
 
-// ── Gold clip-path panel with a metallic border ──────────────
 export function Frame({ children, glow, pad = 14, style }) {
   return (
     <div style={{ background: GOLD_GRAD, clipPath: CLIP, padding: 1.5,
@@ -53,6 +61,16 @@ export function Eyebrow({ children, right }) {
   );
 }
 
+export function RoleTag({ role, small }) {
+  const r = ROLES[role];
+  if (!r) return null;
+  return (
+    <span style={{ fontSize: small ? 8 : 9, fontWeight: 800, letterSpacing: "0.12em", color: r.color,
+      background: `${r.color}18`, border: `1px solid ${r.color}55`, borderRadius: 3, padding: small ? "1px 5px" : "2px 7px",
+      fontFamily: "'Chakra Petch',sans-serif", whiteSpace: "nowrap" }}>{r.tag}</span>
+  );
+}
+
 export function RankChip({ rank, small }) {
   if (!rank) return null;
   const col = RANKS[rank] || C.dim;
@@ -67,29 +85,54 @@ export function RankChip({ rank, small }) {
 
 // p: { heroClass, role, rank }
 export function Avatar({ p, size = 52 }) {
-  const cls = heroClassOf(p.heroClass, p.role);
-  const col = CLASS_COLOR[cls] || C.gold;
+  const cls = classOf(p.heroClass, p.role);
   const ring = RANKS[p.rank] || C.dim;
-  const img = HERO_IMG[cls];
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <div style={{ position: "absolute", inset: -2, background: `conic-gradient(from 200deg, ${ring}, ${ring}00 40%, ${ring} 65%, ${ring})`, clipPath: HEX }} />
-      <div style={{ position: "absolute", inset: 1, background: `radial-gradient(circle at 50% 30%, ${col}30 0%, #060A1E 75%)`, clipPath: HEX, overflow: "hidden" }}>
-        {img
-          ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />
-          : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: size * 0.42 }}>🦸</div>}
+      <div style={{ position: "absolute", inset: 1, background: `radial-gradient(circle at 50% 30%, ${cls.color}30 0%, #060A1E 75%)`, clipPath: HEX, overflow: "hidden" }}>
+        {cls.img
+          ? <img src={cls.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />
+          : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: size * 0.42 }}>{cls.icon}</div>}
       </div>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", boxShadow: `0 0 16px ${ring}66`, clipPath: HEX }} />
     </div>
   );
 }
 
-// Skewed, glowing HP/EXP bar.
-export function WarBar({ pct, col, h = 14 }) {
+// Reference signature: skewed HP/EXP bar with an optional label row.
+export function WarBar({ pct, grad, glowCol, label, right, h = 20 }) {
   return (
-    <div style={{ transform: "skewX(-12deg)", height: h, background: "#02040D", border: `1px solid ${col}44`, borderRadius: 3, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, pct))}%`,
-        background: `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: `0 0 12px ${col}`, transition: "width 1s cubic-bezier(.2,.8,.3,1)" }} />
+    <div>
+      {(label || right) && (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, marginBottom: 3 }}>
+          <span style={{ color: glowCol }}>{label}</span>
+          <span style={{ color: C.dim }}>{right}</span>
+        </div>
+      )}
+      <div style={{ transform: "skewX(-14deg)", height: h, background: "#02040D", border: `1px solid ${glowCol}44`, overflow: "hidden", borderRadius: 3 }}>
+        <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, pct))}%`, background: grad, boxShadow: `0 0 14px ${glowCol}`, transition: "width 1.2s cubic-bezier(.2,.8,.3,1)" }} />
+      </div>
+    </div>
+  );
+}
+
+// Hexagon badge (ref).
+export function Badge({ icon, label, tier }) {
+  const cols = {
+    gold: { a: "#FFE79A", b: "#8A6510", glow: C.gold },
+    purple: { a: "#D0A8FF", b: "#4A1F8C", glow: C.purple },
+    cyan: { a: "#9FF3FF", b: "#0E5C6C", glow: C.cyan },
+  }[tier] || { a: "#FFE79A", b: "#8A6510", glow: C.gold };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: 72 }}>
+      <div style={{ position: "relative", width: 58, height: 64 }}>
+        <div style={{ position: "absolute", inset: 0, clipPath: HEX, background: `linear-gradient(160deg, ${cols.a} 0%, ${cols.b} 100%)`, filter: `drop-shadow(0 0 10px ${cols.glow}66)` }} />
+        <div style={{ position: "absolute", inset: 3, clipPath: HEX, background: "radial-gradient(circle at 50% 28%, #1B2450 0%, #070B22 80%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 24, filter: `drop-shadow(0 0 8px ${cols.glow})` }}>{icon}</span>
+        </div>
+      </div>
+      <span style={{ fontSize: 9, fontWeight: 700, color: C.dim, textAlign: "center", lineHeight: 1.3 }}>{label}</span>
     </div>
   );
 }

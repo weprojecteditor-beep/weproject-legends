@@ -1,5 +1,11 @@
-import { C, Frame, Eyebrow, RankChip, Avatar, WarBar, fmt, heroClassOf, CLASS_COLOR } from "../ml.jsx";
+import { useState } from "react";
+import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
+const SKIN_TIERS = [
+  { tier: "GENERAL", unlock: 1, col: "#8C96C4" },
+  { tier: "ELITE", unlock: 10, col: "#3EE0F0" },
+  { tier: "LEGEND", unlock: 20, col: "#F5C542" },
+];
 const LEVEL_REWARDS = [
   { lv: 5, icon: "💰", label: "+100 Gold" },
   { lv: 10, icon: "🎭", label: "Elite Skin" },
@@ -8,113 +14,109 @@ const LEVEL_REWARDS = [
   { lv: 25, icon: "💰", label: "+500 Gold" },
   { lv: 30, icon: "🏛️", label: "Hall of Fame" },
 ];
-
-const MISSION_META = {
-  todo: { label: "SUBMIT", color: C.gold, clickable: true },
-  pending: { label: "⏳ WAITING GM", color: C.orange, clickable: true },
-  approved: { label: "✓ EXP GRANTED", color: C.green, clickable: false },
-  rejected: { label: "REJECTED", color: C.hp, clickable: false },
-};
-
-function MissionRow({ m, onMission }) {
-  const meta = MISSION_META[m.status] || MISSION_META.todo;
-  return (
-    <button
-      onClick={() => meta.clickable && onMission(m)}
-      disabled={!meta.clickable}
-      style={{
-        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-        clipPath: "polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)",
-        background: C.panelSoft, border: `1px solid ${C.line}`, padding: "9px 12px", textAlign: "left",
-        cursor: meta.clickable ? "pointer" : "default", color: C.text,
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 13 }}>{m.text}</div>
-        <div style={{ fontSize: 10, color: C.dim }}>+{m.exp} EXP</div>
-      </div>
-      <span style={{ fontSize: 10, fontWeight: 800, color: meta.color, fontFamily: "'Chakra Petch',sans-serif" }}>{meta.label}</span>
-    </button>
-  );
-}
+const CYAN_DEEP = "#0E7C8C";
 
 export default function Hero({ player, onMission }) {
-  const cls = heroClassOf(player.heroClass, player.role);
-  const clsCol = CLASS_COLOR[cls] || C.gold;
-  const lvlPct = player.expToNextLevel ? (player.expInLevel / player.expToNextLevel) * 100 : 100;
+  const cls = classOf(player.heroClass, player.role);
+  const lvl = player.level;
+  const highestSkin = SKIN_TIERS.filter((s) => lvl >= s.unlock).slice(-1)[0]?.tier || "GENERAL";
+  const [skin, setSkin] = useState(highestSkin);
   const rankTarget = player.seasonExp + (player.expToNextRank || 0);
-  const rankPct = rankTarget ? (player.seasonExp / rankTarget) * 100 : 100;
+  const nextRankCol = RANKS[player.nextRank] || C.gold;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Hero card */}
-      <Frame glow={clsCol}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ position: "relative" }}>
-            <Avatar p={player} size={78} />
-            <div style={{ position: "absolute", bottom: -8, left: "50%", transform: "translateX(-50%)",
-              background: C.gold, color: "#0A0D1C", fontSize: 11, fontWeight: 800, padding: "1px 8px",
-              clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%)", fontFamily: "'Chakra Petch',sans-serif", boxShadow: `0 0 10px ${C.gold}88` }}>
-              Lv{player.level}
+      {/* ── Hero Showcase ── */}
+      <Frame glow={cls.color} pad={0}>
+        <div style={{ position: "relative", minHeight: 280, background: `radial-gradient(ellipse 90% 70% at 50% 20%, ${cls.color}26 0%, transparent 60%)` }}>
+          <div style={{ position: "absolute", inset: 0, opacity: 0.35,
+            background: `conic-gradient(from 180deg at 50% 15%, transparent 0deg, ${cls.color}14 8deg, transparent 16deg, transparent 28deg, ${cls.color}10 36deg, transparent 44deg, transparent 60deg, ${cls.color}14 68deg, transparent 76deg)` }} />
+          {cls.img
+            ? <img src={cls.img} alt="" style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", height: 215, filter: `drop-shadow(0 0 30px ${cls.color}77)` }} />
+            : <div style={{ position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", fontSize: 110, filter: `drop-shadow(0 0 30px ${cls.color})` }}>{cls.icon}</div>}
+          <div style={{ position: "absolute", top: 10, left: 10 }}><RankChip rank={player.rank} /></div>
+          <div style={{ position: "absolute", top: 10, right: 10, textAlign: "right" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: cls.color, letterSpacing: "0.14em", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 12px ${cls.color}` }}>
+              {cls.icon} {cls.label}
             </div>
+            <div style={{ fontSize: 8, color: C.dimmer, marginTop: 4 }}>hero set at login</div>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 20 }}>{player.name}</div>
-            <div style={{ fontSize: 11, color: clsCol, fontWeight: 700, marginBottom: 4, fontFamily: "'Chakra Petch',sans-serif" }}>
-              {cls.toUpperCase()} · {player.classFamily || player.role}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: `linear-gradient(transparent, ${C.bgDeep}F0 55%)`, padding: "44px 16px 14px", textAlign: "center" }}>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 30, letterSpacing: "0.14em", background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: `drop-shadow(0 0 18px ${C.gold}66)` }}>
+              {player.name}
             </div>
-            <RankChip rank={player.rank} small />
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 18, color: C.gold }}>🪙 {fmt(player.gold)}</div>
-            <div style={{ fontSize: 9, color: C.dim }}>GOLD</div>
-            {player.goldPendingAdjustment && <div style={{ fontSize: 9, color: C.hp }}>⚠ pending adj.</div>}
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 5, alignItems: "center" }}>
+              <RoleTag role={player.role} />
+              <span style={{ fontSize: 11, color: C.gold, fontWeight: 800 }}>🪙 {fmt(player.gold)}</span>
+              <span style={{ fontSize: 11, color: C.dim }}>Lv{lvl}</span>
+            </div>
           </div>
         </div>
-
-        {/* Level bar */}
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
-            <span style={{ color: C.dim }}>Lv{player.level} → Lv{player.level + 1}</span>
-            <span style={{ color: C.cyan }}>{player.expInLevel}/{player.expToNextLevel} EXP</span>
-          </div>
-          <WarBar pct={lvlPct} col={C.cyan} h={10} />
-
+        <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <WarBar pct={player.expToNextLevel ? (player.expInLevel / player.expToNextLevel) * 100 : 100} h={12}
+            grad={`linear-gradient(90deg,${CYAN_DEEP},${C.cyan})`} glowCol={C.cyan}
+            label={`LEVEL ${lvl} → ${lvl + 1}`} right={`${player.expInLevel}/${player.expToNextLevel} EXP`} />
           {player.nextRank ? (
-            <>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, margin: "10px 0 3px" }}>
-                <span style={{ color: C.dim }}>Road to {player.nextRank}</span>
-                <span style={{ color: C.gold }}>{fmt(player.seasonExp)}/{fmt(rankTarget)} Season EXP</span>
-              </div>
-              <WarBar pct={rankPct} col={C.purple} h={10} />
-            </>
+            <WarBar pct={rankTarget ? (player.seasonExp / rankTarget) * 100 : 100} h={12}
+              grad={`linear-gradient(90deg,#5B3BBB,${nextRankCol})`} glowCol={nextRankCol}
+              label={`ROAD TO ${player.nextRank.toUpperCase()}`} right={`${fmt(player.seasonExp)}/${fmt(rankTarget)}`} />
           ) : (
-            <div style={{ fontSize: 11, color: C.gold, marginTop: 10, fontFamily: "'Chakra Petch',sans-serif" }}>★ MAX RANK — {fmt(player.seasonExp)} Season EXP</div>
+            <div style={{ fontSize: 11, color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>★ MAX RANK — {fmt(player.seasonExp)} Season EXP</div>
           )}
         </div>
       </Frame>
 
-      {/* Level rewards track */}
-      <Frame pad={12}>
-        <Eyebrow right={`+${player.todayExp} today`}>LEVEL REWARDS</Eyebrow>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
-          {LEVEL_REWARDS.map((r) => {
-            const got = player.level >= r.lv;
+      {/* ── Skins gallery ── */}
+      <Frame pad={14}>
+        <Eyebrow right={`YOU ARE LV${lvl}`}>SKINS · {cls.label}</Eyebrow>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 9 }}>
+          {SKIN_TIERS.map((s) => {
+            const owned = lvl >= s.unlock;
+            const equipped = skin === s.tier;
             return (
-              <div key={r.lv} style={{ textAlign: "center", clipPath: "polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)",
-                background: got ? `${C.gold}18` : C.panelSoft, border: `1px solid ${got ? C.gold + "66" : C.line}`, padding: "6px 2px", opacity: got ? 1 : 0.55 }}>
-                <div style={{ fontSize: 16, filter: got ? `drop-shadow(0 0 6px ${C.gold})` : "grayscale(1)" }}>{got ? r.icon : "🔒"}</div>
-                <div style={{ fontSize: 8, fontWeight: 800, color: got ? C.gold : C.dim, fontFamily: "'Chakra Petch',sans-serif" }}>Lv{r.lv}</div>
-                <div style={{ fontSize: 7.5, color: got ? C.text : C.dim, lineHeight: 1.2 }}>{r.label}</div>
+              <button key={s.tier} onClick={() => owned && setSkin(s.tier)} style={{
+                clipPath: CLIP_SM, padding: "10px 6px", cursor: owned ? "pointer" : "not-allowed",
+                background: equipped ? `linear-gradient(180deg,${s.col}22,${s.col}08)` : C.panelSoft,
+                border: `1px solid ${equipped ? s.col : C.line}`, textAlign: "center", position: "relative" }}>
+                <div style={{ width: 56, height: 56, margin: "0 auto 6px", position: "relative" }}>
+                  {cls.img
+                    ? <img src={cls.img} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: owned ? `drop-shadow(0 0 10px ${s.col}AA)` : "grayscale(1) brightness(0.5)" }} />
+                    : <div style={{ fontSize: 38, filter: owned ? "none" : "grayscale(1) brightness(0.5)" }}>{cls.icon}</div>}
+                  {!owned && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🔒</div>}
+                </div>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: owned ? s.col : C.dimmer, fontFamily: "'Chakra Petch',sans-serif" }}>{s.tier}</div>
+                <div style={{ fontSize: 8, color: C.dimmer, marginTop: 2 }}>{equipped ? "EQUIPPED" : owned ? "TAP TO EQUIP" : `UNLOCK AT LV${s.unlock}`}</div>
+              </button>
+            );
+          })}
+        </div>
+      </Frame>
+
+      {/* ── Level rewards roadmap ── */}
+      <Frame pad={14}>
+        <Eyebrow right="LEVEL NEVER RESETS">LEVEL REWARDS</Eyebrow>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          {LEVEL_REWARDS.map((r) => {
+            const got = lvl >= r.lv;
+            const next = !got && LEVEL_REWARDS.find((x) => lvl < x.lv)?.lv === r.lv;
+            return (
+              <div key={r.lv} style={{ flexShrink: 0, width: 76, textAlign: "center", clipPath: CLIP_SM, padding: "9px 4px",
+                background: got ? `linear-gradient(180deg,${C.gold}1E,${C.gold}06)` : next ? `linear-gradient(180deg,${C.cyan}14,transparent)` : C.panelSoft,
+                border: `1px solid ${got ? C.gold + "66" : next ? C.cyan + "66" : C.line}`, opacity: got || next ? 1 : 0.6 }}>
+                <div style={{ fontSize: 20, filter: got ? `drop-shadow(0 0 8px ${C.gold})` : "none" }}>{got || next ? r.icon : "🔒"}</div>
+                <div style={{ fontSize: 10, fontWeight: 900, marginTop: 3, color: got ? C.gold : next ? C.cyan : C.dimmer, fontFamily: "'Chakra Petch',sans-serif" }}>LV {r.lv}</div>
+                <div style={{ fontSize: 8, color: got ? C.text : C.dim, marginTop: 2, lineHeight: 1.3 }}>{r.label}</div>
+                {got && <div style={{ fontSize: 7.5, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ CLAIMED</div>}
+                {next && <div style={{ fontSize: 7.5, color: C.cyan, fontWeight: 800, marginTop: 2 }}>NEXT</div>}
               </div>
             );
           })}
         </div>
       </Frame>
 
-      {/* Fast climber (pace) bonus */}
+      {/* ── Fast climber ── */}
       {player.paceEligible && player.paceEligible.length > 0 && (
-        <Frame glow={C.gold} pad={12}>
+        <Frame glow={C.gold} pad={14}>
           <Eyebrow>⚡ FAST CLIMBER — EXTRA BOUNTY</Eyebrow>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {player.paceEligible.map((p, i) => (
@@ -124,56 +126,53 @@ export default function Hero({ player, onMission }) {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 10, color: C.dim, marginTop: 8 }}>Leveled up fast — your GM confirms & grants this bonus.</div>
+          <div style={{ fontSize: 9, color: C.dimmer, marginTop: 8 }}>Leveled up fast — GM confirms & grants this bonus.</div>
         </Frame>
       )}
 
-      {/* Daily missions */}
-      <Frame pad={12}>
-        <Eyebrow right="tap to submit">DAILY MISSIONS</Eyebrow>
+      {/* ── Missions ── */}
+      <Frame pad={14}>
+        <Eyebrow right="ALL APPROVED +30">DAILY MISSIONS</Eyebrow>
         {(!player.missionsToday || player.missionsToday.length === 0) ? (
           <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "8px 0" }}>No missions configured for your role yet.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {player.missionsToday.map((m) => <MissionRow key={m.missionId} m={m} onMission={onMission} />)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {player.missionsToday.map((m) => {
+              const st = m.status;
+              const locked = st === "approved" || st === "rejected";
+              const border = st === "approved" ? C.green : st === "pending" ? C.orange : C.line;
+              return (
+                <button key={m.missionId} onClick={() => !locked && onMission(m)} disabled={locked} style={{
+                  display: "flex", alignItems: "center", gap: 11, width: "100%",
+                  background: st === "approved" ? `linear-gradient(90deg,${C.green}12,${C.panelSoft})` : st === "pending" ? `linear-gradient(90deg,${C.orange}10,${C.panelSoft})` : C.panelSoft,
+                  border: `1px solid ${border}66`, clipPath: CLIP_SM, padding: "11px 13px", cursor: locked ? "default" : "pointer", color: C.text, textAlign: "left" }}>
+                  <div style={{ width: 20, height: 20, flexShrink: 0, transform: "rotate(45deg)", background: st === "approved" ? C.green : "transparent",
+                    border: `2px solid ${st === "approved" ? C.green : st === "pending" ? C.orange : C.dimmer}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {st === "approved" && <span style={{ transform: "rotate(-45deg)", fontSize: 11, fontWeight: 900, color: "#04101E" }}>✓</span>}
+                    {st === "pending" && <span style={{ transform: "rotate(-45deg)", fontSize: 9, color: C.orange }}>⏳</span>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, color: st === "approved" ? C.dim : C.text, textDecoration: st === "approved" ? "line-through" : "none" }}>{m.text}</div>
+                    {st === "pending" && <div style={{ fontSize: 9, color: C.orange, fontWeight: 800, marginTop: 2 }}>⏳ WAITING GM APPROVAL · tap to cancel</div>}
+                    {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · EXP GRANTED</div>}
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>+{m.exp}</span>
+                </button>
+              );
+            })}
           </div>
         )}
+        <div style={{ fontSize: 9, color: C.dimmer, marginTop: 9, textAlign: "center" }}>EXP is granted after GM approval · missions are managed in Google Sheets</div>
       </Frame>
 
-      {/* Badges */}
-      <Frame pad={12}>
+      {/* ── Badges ── */}
+      <Frame pad={14}>
         <Eyebrow>BADGES</Eyebrow>
         {(!player.badges || player.badges.length === 0) ? (
           <div style={{ fontSize: 12, color: C.dim }}>No badges yet — earn milestones & achievements to collect them.</div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {player.badges.map((b, i) => (
-              <span key={i} style={{ fontSize: 11, clipPath: "polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)",
-                background: `${C.gold}14`, color: C.gold, border: `1px solid ${C.gold}44`, padding: "3px 10px" }}>🏅 {b}</span>
-            ))}
-          </div>
-        )}
-      </Frame>
-
-      {/* Recent activity */}
-      <Frame pad={12}>
-        <Eyebrow>RECENT ACTIVITY</Eyebrow>
-        {(!player.recentLog || player.recentLog.length === 0) ? (
-          <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "8px 0" }}>No EXP logged yet.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {player.recentLog.map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%,0 6px)",
-                background: C.panelSoft, border: `1px solid ${C.line}`, padding: "7px 10px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.item || r.category}</div>
-                  <div style={{ fontSize: 9, color: C.dim }}>{r.date} · {r.category}{r.amountRm ? ` · RM ${fmt(r.amountRm)}` : ""}</div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: r.exp < 0 ? C.hp : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>
-                  {r.exp < 0 ? "" : "+"}{r.exp}
-                </div>
-              </div>
-            ))}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {player.badges.map((b, i) => <Badge key={i} icon="🏅" label={b} tier="gold" />)}
           </div>
         )}
       </Frame>
