@@ -95,6 +95,7 @@ function doPost(e) {
     if (action === 'redeem')        return json(redeem(body.playerId, body.pin, body.itemId));
     if (action === 'submitMission') return json(submitMission(body.playerId, body.pin, body.missionId));
     if (action === 'setHeroClass')  return json(setHeroClass(body.playerId, body.pin, body.heroClass, body.gender));
+    if (action === 'steal')         return json(steal(body.playerId, body.pin, body.targetId));
     if (action === 'lockWeek')      return json(lockWeek(body.adminPin, body.weekNo));
     return json({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
@@ -547,7 +548,7 @@ function getPlayer(id, pin) {
   var lvl = levelFromExp(allExp, levelTh);
   var rank = rankInfo(seasonExp, cfg);
 
-  var goldReal = goldBalanceReal(id, allExp);
+  var goldReal = goldBalanceReal(id, Math.round(allExp * goldMultiplier(lvl.level)));
   var goldClamped = Math.max(0, goldReal);
 
   var redemptionHistory = getRows('Redemptions')
@@ -725,7 +726,8 @@ function redeem(playerId, pin, itemId) {
 
     var allExp = 0;
     getRows('EXP_Log').forEach(function (r) { if (r.player_id === playerId && isApproved(r)) allExp += num(r.exp); });
-    var goldReal = goldBalanceReal(playerId, allExp);
+    var lvlR = levelFromExp(allExp, buildLevelThresholds(getConfig())).level;
+    var goldReal = goldBalanceReal(playerId, Math.round(allExp * goldMultiplier(lvlR)));
     var price = num(item.price);
     if (Math.max(0, goldReal) < price) return { ok: false, error: 'Not enough Gold' };
 
@@ -735,6 +737,48 @@ function redeem(playerId, pin, itemId) {
     CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'shop:weproject', 'shop:wellous']);
 
     return { ok: true, message: 'Redeemed! Pending GM approval', goldRemaining: Math.max(0, goldReal) - price };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ================================================================== */
+/* POST: steal (Coin Snatcher — cross-team PvP Gold raid)              */
+/* ================================================================== */
+
+function steal(attackerId, pin, targetId) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var players = getPlayers();
+    var a = playerById(players, attackerId);
+    if (!a) return { ok: false, error: 'Player not found' };
+    var pinErr = verifyPin(a, pin);
+    if (pinErr) return { ok: false, error: pinErr.error };
+    var t = playerById(players, targetId);
+    if (!t || !t.active) return { ok: false, error: 'Target not found' };
+    if (t.team === a.team) return { ok: false, error: 'You can only raid the enemy team' };
+
+    var cfg = getConfig();
+    var cost = cfgInt(cfg.steal_weapon_cost, 300);
+    var amount = cfgInt(cfg.steal_amount, 500);
+    var defReward = cfgInt(cfg.steal_defense_reward, 100);
+
+    var today = todayStr();
+    var already = getRows('Steals').some(function (s) { return s.attacker_id === attackerId && dateStr(s.timestamp) === today; });
+    if (already) return { ok: false, error: 'You already raided today — cooldown until tomorrow' };
+
+    if (goldOf(attackerId, cfg) < cost) return { ok: false, error: 'Not enough Gold for the raid (need ' + cost + ')' };
+
+    var success = goldOf(targetId, cfg) >= amount;
+    var stolen = success ? amount : 0;
+    var defense = success ? 0 : defReward;
+
+    ensureStealsSheet().appendRow([new Date(), attackerId, targetId, cost, stolen, success ? 'success' : 'backfire', defense]);
+    CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous']);
+
+    if (success) return { ok: true, result: 'success', message: '😈 Raid success! Stole ' + amount + ' Gold from ' + t.name };
+    return { ok: true, result: 'backfire', message: '🛡 Backfired! ' + t.name + " didn't have enough Gold — you lost " + cost };
   } finally {
     lock.releaseLock();
   }
@@ -971,13 +1015,50 @@ function monthEndStrFromDate(d) {
 
 function normalizeTeam(t) { return (t === 'wellous') ? 'wellous' : 'weproject'; }
 
-/** Gold = cumulative approved EXP − redemptions that aren't rejected. Real (possibly negative) value — callers clamp for display. */
-function goldBalanceReal(playerId, allApprovedExp) {
+/** Gold = earned Gold (EXP × skin multiplier) − redemptions that aren't rejected + raid net. */
+function goldBalanceReal(playerId, earnedGold) {
   var spent = 0;
   getRows('Redemptions').forEach(function (rd) {
     if (rd.player_id === playerId && String(rd.status) !== 'rejected') spent += num(rd.gold_cost);
   });
-  return allApprovedExp - spent;
+  return earnedGold - spent + stealNet(playerId);
+}
+
+/** Skin bonus: leveling up multiplies the Gold you earn from EXP. */
+function goldMultiplier(level) {
+  if (level >= 20) return 1.2;   // Legend skin
+  if (level >= 10) return 1.1;   // Elite skin
+  return 1.0;                    // General
+}
+
+/** Net Gold from PvP raids: attacker (+stolen − weapon cost), target (+defense reward − stolen). */
+function stealNet(playerId) {
+  var net = 0;
+  getRows('Steals').forEach(function (s) {
+    if (s.attacker_id === playerId) net += num(s.stolen_amount) - num(s.weapon_cost);
+    if (s.target_id === playerId) net += num(s.defense_reward) - num(s.stolen_amount);
+  });
+  return net;
+}
+
+/** Full current Gold for any player (EXP × skin multiplier − spending + raid net), clamped ≥0. */
+function goldOf(playerId, cfg) {
+  var levelTh = buildLevelThresholds(cfg);
+  var allExp = 0;
+  getRows('EXP_Log').forEach(function (r) { if (r.player_id === playerId && isApproved(r)) allExp += num(r.exp); });
+  var lvl = levelFromExp(allExp, levelTh).level;
+  return Math.max(0, goldBalanceReal(playerId, Math.round(allExp * goldMultiplier(lvl))));
+}
+
+function ensureStealsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Steals');
+  if (!sheet) {
+    sheet = ss.insertSheet('Steals');
+    sheet.getRange(1, 1, 1, 7).setValues([['timestamp', 'attacker_id', 'target_id', 'weapon_cost', 'stolen_amount', 'result', 'defense_reward']]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
 }
 
 /** Rank from season EXP → { rank, nextRank, expToNextRank }. */

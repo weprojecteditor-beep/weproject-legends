@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, Component } from "react";
 import { C, TEAM_COLORS, fmt } from "../theme.js";
 import { GOLD_GRAD, CLIP_SM } from "../ml.jsx";
-import { getState, getPlayer, getShop, redeem, submitMission } from "../api.js";
+import { getState, getPlayer, getShop, redeem, submitMission, steal } from "../api.js";
 import { usePolling } from "../hooks.js";
 import { Loading, SyncBadge } from "../ui.jsx";
 import Login from "./Login.jsx";
@@ -76,6 +76,14 @@ function Shell({ auth, onLogout }) {
       else setToast(`⚠️ ${r.error || "Could not submit"}`);
     } catch (e) { setToast("⚠️ Could not submit — try again"); }
   };
+  const doSteal = async (targetId) => {
+    try {
+      const r = await steal(auth.id, auth.pin, targetId);
+      setToast(r.ok ? r.message : `⚠️ ${r.error || "Raid failed"}`);
+      if (r.ok) player.refresh();
+      return r;
+    } catch (e) { setToast("⚠️ Raid failed — try again"); return { ok: false }; }
+  };
 
   const bootLoading =
     (tab === "battle" && !state.data) ||
@@ -145,7 +153,7 @@ function Shell({ auth, onLogout }) {
           {tab === "hero" && player.data && <Hero player={player.data} onMission={doMission} />}
           {tab === "guide" && state.data && <Guide state={state.data} role={auth.role} />}
           {tab === "shop" && shop.data && player.data && (
-            <Shop items={shop.data} gold={gold} onRedeem={doRedeem} redemptions={player.data.redemptionHistory || []} />
+            <Shop items={shop.data} gold={gold} onRedeem={doRedeem} redemptions={player.data.redemptionHistory || []} onSteal={doSteal} team={auth.team} />
           )}
         </TabBoundary>
       </div>
