@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
 const SKIN_TIERS = [
-  { tier: "GENERAL", unlock: 1, col: "#8C96C4" },
-  { tier: "ELITE", unlock: 10, col: "#3EE0F0" },
-  { tier: "LEGEND", unlock: 20, col: "#F5C542" },
+  { tier: "GENERAL", unlock: 1, col: "#8C96C4", perk: "" },
+  { tier: "ELITE", unlock: 10, col: "#3EE0F0", perk: "🪙 +10% Gold" },
+  { tier: "LEGEND", unlock: 20, col: "#F5C542", perk: "🪙 +20% Gold" },
 ];
 const LEVEL_REWARDS = [
   { lv: 5, icon: "💰", label: "+100 Gold" },
@@ -105,6 +105,7 @@ export default function Hero({ player, onMission }) {
                   {!owned && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🔒</div>}
                 </div>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: owned ? s.col : C.dimmer, fontFamily: "'Chakra Petch',sans-serif" }}>{s.tier}</div>
+                {s.perk && <div style={{ fontSize: 8, fontWeight: 800, color: owned ? C.green : C.dimmer, marginTop: 2 }}>{s.perk}</div>}
                 <div style={{ fontSize: 8, color: C.dimmer, marginTop: 2 }}>{equipped ? "EQUIPPED" : owned ? "TAP TO EQUIP" : `UNLOCK AT LV${s.unlock}`}</div>
               </button>
             );

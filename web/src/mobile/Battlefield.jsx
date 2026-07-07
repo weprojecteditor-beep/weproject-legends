@@ -99,51 +99,70 @@ function CrystalWar({ cw }) {
 }
 
 /* ── Neutral objectives ── */
-function Slayer({ who, note, pmap }) {
-  const p = pmap[who] || { name: who };
+function ProgressRow({ label, col, val, target }) {
+  const pct = target > 0 ? Math.min(100, (val / target) * 100) : 0;
+  const hit = target > 0 && val >= target;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, clipPath: CLIP_SM, background: `${C.green}12`, border: `1px solid ${C.green}55`, padding: "6px 8px" }}>
+    <div style={{ marginBottom: 5 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, fontWeight: 800, marginBottom: 2 }}>
+        <span style={{ color: col, fontFamily: "'Chakra Petch',sans-serif" }}>{label}{hit ? " ✓" : ""}</span>
+        <span style={{ color: C.dimmer }}>{fmt(val)}/{fmt(target)}</span>
+      </div>
+      <div style={{ transform: "skewX(-12deg)", height: 6, background: "#02040D", border: `1px solid ${col}44`, borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: `0 0 8px ${col}`, transition: "width 1s ease" }} />
+      </div>
+    </div>
+  );
+}
+
+function Slayer({ id, name, team, note, pmap }) {
+  const p = pmap[id] || { name };
+  const tcol = team === "wellous" ? C.enemy : C.cyan;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, clipPath: CLIP_SM, background: `${C.gold}12`, border: `1px solid ${C.gold}55`, padding: "6px 8px" }}>
       <Avatar p={p} size={34} />
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 8, color: C.dimmer, letterSpacing: "0.12em", fontFamily: "'Chakra Petch',sans-serif" }}>⚔ SLAIN BY</div>
-        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name || who}</div>
+        <div style={{ fontSize: 8, color: C.dimmer, letterSpacing: "0.12em", fontFamily: "'Chakra Petch',sans-serif" }}>⚔ SLAIN BY <span style={{ color: tcol }}>{team === "wellous" ? "WELLOUS" : "WEPROJECT"}</span></div>
+        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name || name}</div>
         {note && <div style={{ fontSize: 8, color: C.green, fontWeight: 800 }}>{note}</div>}
       </div>
     </div>
   );
 }
 
-function NeutralObjectives({ buffs, pmap }) {
-  const power = buffs?.powerCreep || { status: "alive" };
-  const lord = buffs?.lord || { status: "alive" };
-  const Card = ({ glow, icon, name, status, children }) => (
+function ObjectiveCard({ glow, icon, name, buff, obj, pmap }) {
+  const slain = obj.status === "slain";
+  const target = obj.target || 0;
+  return (
     <Frame glow={glow} pad={12}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div className="floaty" style={{ fontSize: 28, filter: `drop-shadow(0 0 12px ${glow})` }}>{icon}</div>
         <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", padding: "2px 6px", clipPath: CLIP_SM, fontFamily: "'Chakra Petch',sans-serif",
-          background: status === "slain" ? `${C.green}20` : `${glow}20`, color: status === "slain" ? C.green : glow, border: `1px solid ${(status === "slain" ? C.green : glow)}55` }}>
-          {status === "slain" ? "SLAIN" : "ALIVE"}
+          background: slain ? `${C.green}20` : `${glow}20`, color: slain ? C.green : glow, border: `1px solid ${(slain ? C.green : glow)}55` }}>
+          {slain ? "SLAIN" : "CONTESTED"}
         </span>
       </div>
       <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 11, letterSpacing: "0.1em", color: glow, margin: "4px 0 2px" }}>{name}</div>
-      {children}
+      <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5, marginBottom: 6 }}>First team to <b style={{ color: C.gold }}>RM {fmt(target)}</b> today wins <b style={{ color: C.green }}>{buff}</b></div>
+      <ProgressRow label="WEPROJECT" col={C.cyan} val={obj.wpProgress || 0} target={target} />
+      <ProgressRow label="WELLOUS" col={C.enemy} val={obj.wlProgress || 0} target={target} />
+      {slain && (obj.slainBy || obj.slainById) && <Slayer id={obj.slainById} name={obj.slainBy} team={obj.slainTeam} note={buff} pmap={pmap} />}
     </Frame>
   );
+}
+
+function NeutralObjectives({ buffs, pmap }) {
+  const power = buffs?.powerCreep || { status: "alive" };
+  const lord = buffs?.lord || { status: "alive" };
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 2px 8px" }}>
         <span style={{ color: C.gold, fontSize: 10, fontWeight: 800, letterSpacing: "0.25em", fontFamily: "'Chakra Petch',sans-serif" }}>◆ NEUTRAL OBJECTIVES</span>
-        <span style={{ fontSize: 9, color: C.dimmer }}>who slayed it?</span>
+        <span style={{ fontSize: 9, color: C.dimmer }}>race with revenue to claim it</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Card glow={C.purple} icon="🔮" name="POWER CREEP" status={power.status}>
-          <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>First hero to a <b style={{ color: C.gold }}>DOUBLE KILL</b> (10 sales) claims it → <b style={{ color: C.green }}>team EXP ×1.2</b></div>
-          {power.status === "slain" && power.slainBy && <Slayer who={power.slainBy} note="TEAM EXP ×1.2 TODAY" pmap={pmap} />}
-        </Card>
-        <Card glow={C.hp} icon="💀" name="LORD" status={lord.status}>
-          <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>Break the season's best single-day revenue → <b style={{ color: C.gold }}>base DMG ×2</b> tomorrow</div>
-          {lord.status === "slain" && lord.slainBy && <Slayer who={lord.slainBy} note="BASE DMG ×2 TOMORROW" pmap={pmap} />}
-        </Card>
+        <ObjectiveCard glow={C.purple} icon="🔮" name="POWER CREEP" buff="TEAM EXP ×1.2" obj={power} pmap={pmap} />
+        <ObjectiveCard glow={C.hp} icon="💀" name="LORD" buff="BASE DMG ×2" obj={lord} pmap={pmap} />
       </div>
     </div>
   );

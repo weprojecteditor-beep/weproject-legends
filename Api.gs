@@ -395,24 +395,49 @@ function getMissionsConfig(team) {
 /* Neutral Buffs: Power Creep (auto-claimed) + Lord (record hint)      */
 /* ================================================================== */
 
+/** Today's revenue for a team + its top contributor (used for the neutral-objective race). */
+function teamTodayRevenue(players, expApproved, team, today) {
+  var teamIds = {};
+  players.forEach(function (p) { if (p.team === team) teamIds[p.player_id] = true; });
+  var byPlayer = {}, total = 0;
+  expApproved.forEach(function (r) {
+    if (!teamIds[r.player_id]) return;
+    if (dateStr(r.date) !== today) return;
+    var v = num(r.amount_rm);
+    total += v;
+    byPlayer[r.player_id] = (byPlayer[r.player_id] || 0) + v;
+  });
+  var topId = '', topV = 0;
+  Object.keys(byPlayer).forEach(function (id) { if (byPlayer[id] > topV) { topV = byPlayer[id]; topId = id; } });
+  var p = playerById(players, topId);
+  return { total: total, topId: topId, topName: p ? p.name : '' };
+}
+
+// Neutral objectives are a REVENUE RACE: the first team to reach the daily
+// target slays it and claims the buff. Slayer = that team's top earner today.
 function getBuffsState(players, expApproved, cfg) {
   var today = todayStr();
-  ensureTodayBuffRow('power');
-  ensureTodayBuffRow('lord');
-
-  claimPowerCreepIfClaimed(expApproved, today);
-
-  var todaysBuffs = getRows('Buffs').filter(function (b) { return dateStr(b.date) === today; });
-  var powerRow = todaysBuffs.filter(function (b) { return b.buff_type === 'power'; })[0] || {};
-  var lordRow = todaysBuffs.filter(function (b) { return b.buff_type === 'lord'; })[0] || {};
-
+  var wp = teamTodayRevenue(players, expApproved, 'weproject', today);
+  var wl = teamTodayRevenue(players, expApproved, 'wellous', today);
+  function objective(target) {
+    var wpHit = target > 0 && wp.total >= target;
+    var wlHit = target > 0 && wl.total >= target;
+    var slainTeam = null;
+    if (wpHit && wlHit) slainTeam = wp.total >= wl.total ? 'weproject' : 'wellous';
+    else if (wpHit) slainTeam = 'weproject';
+    else if (wlHit) slainTeam = 'wellous';
+    var win = slainTeam === 'weproject' ? wp : (slainTeam === 'wellous' ? wl : null);
+    return {
+      status: slainTeam ? 'slain' : 'alive',
+      slainTeam: slainTeam || 'none',
+      slainBy: win ? win.topName : '',
+      slainById: win ? win.topId : '',
+      wpProgress: wp.total, wlProgress: wl.total, target: target
+    };
+  }
   return {
-    powerCreep: { status: powerRow.status || 'alive', slainBy: powerRow.slain_by || '' },
-    lord: {
-      status: lordRow.status || 'alive',
-      slainBy: lordRow.slain_by || '',
-      recordBrokenToday: computeRecordBrokenToday(players, expApproved, cfg, today)
-    }
+    powerCreep: objective(cfgInt(cfg.power_creep_target, 300000)),
+    lord: objective(cfgInt(cfg.lord_target, 800000))
   };
 }
 
