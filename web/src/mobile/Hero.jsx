@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
 const SKIN_TIERS = [
@@ -22,8 +22,22 @@ export default function Hero({ player, onMission }) {
   const highestSkin = SKIN_TIERS.filter((s) => lvl >= s.unlock).slice(-1)[0]?.tier || "GENERAL";
   const [skin, setSkin] = useState(highestSkin);
   const [busyMission, setBusyMission] = useState(null);
+  // Optimistic mission state: flip instantly on tap, drop the override once the
+  // server catches up (so it never waits on the slow Apps Script round-trip).
+  const [overrides, setOverrides] = useState({});
+  useEffect(() => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      (player.missionsToday || []).forEach((m) => {
+        if (next[m.missionId] !== undefined && (next[m.missionId] === m.status || m.status === "approved" || m.status === "rejected")) delete next[m.missionId];
+      });
+      return next;
+    });
+  }, [player.missionsToday]);
   const clickMission = async (m) => {
-    if (busyMission || m.status === "approved") return;
+    const cur = overrides[m.missionId] || m.status;
+    if (busyMission || cur === "approved") return;
+    setOverrides((o) => ({ ...o, [m.missionId]: cur === "pending" ? "todo" : "pending" }));
     setBusyMission(m.missionId);
     try { await onMission(m); } finally { setBusyMission(null); }
   };
@@ -144,7 +158,7 @@ export default function Hero({ player, onMission }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {player.missionsToday.map((m) => {
-              const st = m.status;
+              const st = overrides[m.missionId] || m.status;
               const border = st === "approved" ? C.green : st === "pending" ? C.orange : C.line;
               const busy = busyMission === m.missionId;
               return (

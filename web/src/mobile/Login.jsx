@@ -107,35 +107,49 @@ export default function Login({ onLogin }) {
   );
 }
 
+const SPARKS = [[8, 14], [22, 72], [80, 18], [90, 66], [50, 8], [14, 88], [72, 86], [42, 52], [60, 30], [33, 24]];
+
 function Splash({ onEnter }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, overflow: "hidden",
-      background: `radial-gradient(ellipse 100% 70% at 50% 30%, #0E1840 0%, ${C.bgDeep} 65%)`,
+      background: `radial-gradient(ellipse 70% 40% at 20% 25%, ${C.cyan}18 0%, transparent 55%), radial-gradient(ellipse 70% 40% at 80% 25%, ${C.enemy}18 0%, transparent 55%), radial-gradient(ellipse 100% 70% at 50% 30%, #0E1840 0%, ${C.bgDeep} 65%)`,
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      {/* rotating rays */}
       <div style={{ position: "absolute", inset: 0, opacity: 0.25, pointerEvents: "none",
         background: `conic-gradient(from 0deg at 50% 40%, transparent 0deg, ${C.gold}10 6deg, transparent 12deg, transparent 24deg, ${C.cyan}0C 30deg, transparent 36deg, transparent 48deg, ${C.enemy}0C 54deg, transparent 60deg)`,
         animation: "spinSlow 30s linear infinite" }} />
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.5em", color: C.dim, fontFamily: "'Chakra Petch',sans-serif", marginBottom: 18, animation: "fadeIn .8s ease .2s both" }}>SEASON 1 · 2026</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
+      {/* twinkling sparkles */}
+      {SPARKS.map((s, i) => (
+        <div key={i} style={{ position: "absolute", left: `${s[0]}%`, top: `${s[1]}%`, fontSize: i % 3 === 0 ? 16 : 10, color: C.goldHi,
+          filter: `drop-shadow(0 0 6px ${C.gold})`, animation: `pulse ${2 + (i % 3)}s ease-in-out ${i * 0.2}s infinite`, pointerEvents: "none" }}>✦</div>
+      ))}
+
+      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 22, letterSpacing: "0.14em",
+        background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: `drop-shadow(0 0 18px ${C.gold}77)`,
+        marginBottom: 4, animation: "fadeIn .8s ease .1s both" }}>LEAGUE OF LEGENDS</div>
+      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.4em", color: C.dim, fontFamily: "'Chakra Petch',sans-serif", marginBottom: 16, animation: "fadeIn .8s ease .2s both" }}>SEASON 1 · 2026</div>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 8 }}>
         <div style={{ textAlign: "center", animation: "slamL .6s cubic-bezier(.2,1.4,.4,1) .4s both" }}>
-          <div className="crystalL" style={{ fontSize: 44, filter: `drop-shadow(0 0 24px ${C.cyan})` }}>💎</div>
-          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 20, color: C.cyan, letterSpacing: "0.06em", textShadow: `0 0 24px ${C.cyan}` }}>WEPROJECT</div>
+          <img className="crystalL" src="/avatars/marksman.png" alt="" style={{ height: 108, filter: `drop-shadow(0 0 22px ${C.cyan})` }} />
+          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: C.cyan, letterSpacing: "0.06em", textShadow: `0 0 24px ${C.cyan}` }}>WEPROJECT</div>
           <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em" }}>16 HEROES</div>
         </div>
-        <div style={{ width: 58, height: 58, flexShrink: 0, transform: "rotate(45deg)", background: GOLD_GRAD, padding: 2, boxShadow: `0 0 40px ${C.gold}`, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .9s both" }}>
+        <div style={{ width: 54, height: 54, flexShrink: 0, transform: "rotate(45deg)", marginBottom: 34, background: GOLD_GRAD, padding: 2, boxShadow: `0 0 40px ${C.gold}`, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .9s both" }}>
           <div style={{ width: "100%", height: "100%", background: "#0A0F28", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 19, color: C.goldHi, textShadow: `0 0 16px ${C.gold}` }}>VS</span>
+            <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: C.goldHi, textShadow: `0 0 16px ${C.gold}` }}>VS</span>
           </div>
         </div>
         <div style={{ textAlign: "center", animation: "slamR .6s cubic-bezier(.2,1.4,.4,1) .4s both" }}>
-          <div className="crystalR" style={{ fontSize: 44, filter: `drop-shadow(0 0 24px ${C.enemy})` }}>💎</div>
-          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 20, color: "#FF7777", letterSpacing: "0.06em", textShadow: `0 0 24px ${C.enemy}` }}>WELLOUS</div>
+          <img className="crystalR" src="/avatars/fighter.png" alt="" style={{ height: 108, filter: `drop-shadow(0 0 22px ${C.enemy})` }} />
+          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: "#FF7777", letterSpacing: "0.06em", textShadow: `0 0 24px ${C.enemy}` }}>WELLOUS</div>
           <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em" }}>RIVAL TEAM</div>
         </div>
       </div>
-      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.3em", margin: "16px 0 6px",
+
+      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.3em", margin: "12px 0 6px",
         background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "fadeIn .8s ease 1.2s both" }}>⚔ THE WAR IS ON ⚔</div>
-      <div style={{ fontSize: 10, color: C.dim, marginBottom: 28, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Crystals at stake · towers will fall</div>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 22, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Crystals at stake · towers will fall</div>
       <button onClick={onEnter} style={{ clipPath: CLIP_SM, padding: "14px 44px", border: "none", cursor: "pointer",
         background: GOLD_GRAD, color: "#0A0F28", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 14, letterSpacing: "0.15em",
         animation: "fadeIn .8s ease 1.6s both, glowPulse 2s ease 2s infinite" }}>ENTER THE BATTLEFIELD</button>

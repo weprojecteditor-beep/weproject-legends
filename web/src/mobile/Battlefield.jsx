@@ -99,13 +99,27 @@ function CrystalWar({ cw }) {
 }
 
 /* ── Neutral objectives ── */
-function NeutralObjectives({ buffs }) {
+function Slayer({ who, note, pmap }) {
+  const p = pmap[who] || { name: who };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, clipPath: CLIP_SM, background: `${C.green}12`, border: `1px solid ${C.green}55`, padding: "6px 8px" }}>
+      <Avatar p={p} size={34} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 8, color: C.dimmer, letterSpacing: "0.12em", fontFamily: "'Chakra Petch',sans-serif" }}>⚔ SLAIN BY</div>
+        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name || who}</div>
+        {note && <div style={{ fontSize: 8, color: C.green, fontWeight: 800 }}>{note}</div>}
+      </div>
+    </div>
+  );
+}
+
+function NeutralObjectives({ buffs, pmap }) {
   const power = buffs?.powerCreep || { status: "alive" };
   const lord = buffs?.lord || { status: "alive" };
   const Card = ({ glow, icon, name, status, children }) => (
     <Frame glow={glow} pad={12}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ fontSize: 28, filter: `drop-shadow(0 0 10px ${glow})` }}>{icon}</div>
+        <div className="floaty" style={{ fontSize: 28, filter: `drop-shadow(0 0 12px ${glow})` }}>{icon}</div>
         <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", padding: "2px 6px", clipPath: CLIP_SM, fontFamily: "'Chakra Petch',sans-serif",
           background: status === "slain" ? `${C.green}20` : `${glow}20`, color: status === "slain" ? C.green : glow, border: `1px solid ${(status === "slain" ? C.green : glow)}55` }}>
           {status === "slain" ? "SLAIN" : "ALIVE"}
@@ -119,15 +133,16 @@ function NeutralObjectives({ buffs }) {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 2px 8px" }}>
         <span style={{ color: C.gold, fontSize: 10, fontWeight: 800, letterSpacing: "0.25em", fontFamily: "'Chakra Petch',sans-serif" }}>◆ NEUTRAL OBJECTIVES</span>
-        <span style={{ fontSize: 9, color: C.dimmer }}>slay them to claim the buff</span>
+        <span style={{ fontSize: 9, color: C.dimmer }}>who slayed it?</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Card glow={C.purple} icon="🔮" name="POWER CREEP" status={power.status}>
-          <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>First hero to a <b style={{ color: C.gold }}>DOUBLE KILL</b> (10 sales) claims it → <b style={{ color: C.green }}>team EXP ×1.2 today</b></div>
-          {power.status === "slain" && power.slainBy && <div style={{ fontSize: 10, color: C.green, fontWeight: 800, marginTop: 6 }}>SLAIN BY {power.slainBy}</div>}
+          <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>First hero to a <b style={{ color: C.gold }}>DOUBLE KILL</b> (10 sales) claims it → <b style={{ color: C.green }}>team EXP ×1.2</b></div>
+          {power.status === "slain" && power.slainBy && <Slayer who={power.slainBy} note="TEAM EXP ×1.2 TODAY" pmap={pmap} />}
         </Card>
         <Card glow={C.hp} icon="💀" name="LORD" status={lord.status}>
           <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>Break the season's best single-day revenue → <b style={{ color: C.gold }}>base DMG ×2</b> tomorrow</div>
+          {lord.status === "slain" && lord.slainBy && <Slayer who={lord.slainBy} note="BASE DMG ×2 TOMORROW" pmap={pmap} />}
         </Card>
       </div>
     </div>
@@ -254,7 +269,7 @@ export default function Battlefield({ state, meId }) {
         @media (prefers-reduced-motion: reduce){.crystalPulse,.feedItem{animation:none!important;}}
       `}</style>
       <CrystalWar cw={state.crystalWar || {}} />
-      <NeutralObjectives buffs={state.buffs} />
+      <NeutralObjectives buffs={state.buffs} pmap={pmap} />
       <DamageBoard rows={state.damageRanking} meId={meId} />
       <CreativeBoard rows={state.creativeRanking} />
       <KillFeed feed={state.feed} pmap={pmap} />

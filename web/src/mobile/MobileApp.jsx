@@ -102,12 +102,13 @@ function Shell({ auth, onLogout }) {
       <div style={{ position: "sticky", top: 0, zIndex: 10, padding: "14px 16px 10px", background: `linear-gradient(${C.bgDeep}F5 60%, transparent)` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em",
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 17, letterSpacing: "0.06em",
               background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: `drop-shadow(0 0 16px ${C.gold}55)` }}>
-              WEPROJECT LEGENDS
+              LEAGUE OF LEGENDS
             </div>
-            <div style={{ fontSize: 10, color: teamCol, fontWeight: 700, letterSpacing: "0.06em" }}>
-              💎 {auth.name} · {auth.team === "wellous" ? "WELLOUS" : "WEPROJECT"}
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", fontFamily: "'Chakra Petch',sans-serif" }}>
+              <span style={{ color: C.cyan }}>WEPROJECT</span> <span style={{ color: C.gold }}>×</span> <span style={{ color: C.enemy }}>WELLOUS</span>
+              <span style={{ color: C.dim, fontWeight: 600 }}> · {auth.name}</span>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
