@@ -21,6 +21,12 @@ export default function Hero({ player, onMission }) {
   const lvl = player.level;
   const highestSkin = SKIN_TIERS.filter((s) => lvl >= s.unlock).slice(-1)[0]?.tier || "GENERAL";
   const [skin, setSkin] = useState(highestSkin);
+  const [busyMission, setBusyMission] = useState(null);
+  const clickMission = async (m) => {
+    if (busyMission || m.status === "approved") return;
+    setBusyMission(m.missionId);
+    try { await onMission(m); } finally { setBusyMission(null); }
+  };
   const rankTarget = player.seasonExp + (player.expToNextRank || 0);
   const nextRankCol = RANKS[player.nextRank] || C.gold;
 
@@ -139,13 +145,13 @@ export default function Hero({ player, onMission }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {player.missionsToday.map((m) => {
               const st = m.status;
-              const locked = st === "approved" || st === "rejected";
               const border = st === "approved" ? C.green : st === "pending" ? C.orange : C.line;
+              const busy = busyMission === m.missionId;
               return (
-                <button key={m.missionId} onClick={() => !locked && onMission(m)} disabled={locked} style={{
+                <button key={m.missionId} type="button" onClick={() => clickMission(m)} style={{
                   display: "flex", alignItems: "center", gap: 11, width: "100%",
                   background: st === "approved" ? `linear-gradient(90deg,${C.green}12,${C.panelSoft})` : st === "pending" ? `linear-gradient(90deg,${C.orange}10,${C.panelSoft})` : C.panelSoft,
-                  border: `1px solid ${border}66`, clipPath: CLIP_SM, padding: "11px 13px", cursor: locked ? "default" : "pointer", color: C.text, textAlign: "left" }}>
+                  border: `1px solid ${border}66`, clipPath: CLIP_SM, padding: "11px 13px", cursor: st === "approved" ? "default" : "pointer", color: C.text, textAlign: "left" }}>
                   <div style={{ width: 20, height: 20, flexShrink: 0, transform: "rotate(45deg)", background: st === "approved" ? C.green : "transparent",
                     border: `2px solid ${st === "approved" ? C.green : st === "pending" ? C.orange : C.dimmer}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {st === "approved" && <span style={{ transform: "rotate(-45deg)", fontSize: 11, fontWeight: 900, color: "#04101E" }}>✓</span>}
@@ -155,8 +161,9 @@ export default function Hero({ player, onMission }) {
                     <div style={{ fontSize: 13, color: st === "approved" ? C.dim : C.text, textDecoration: st === "approved" ? "line-through" : "none" }}>{m.text}</div>
                     {st === "pending" && <div style={{ fontSize: 9, color: C.orange, fontWeight: 800, marginTop: 2 }}>⏳ WAITING GM APPROVAL · tap to cancel</div>}
                     {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · EXP GRANTED</div>}
+                    {(!st || st === "todo") && <div style={{ fontSize: 9, color: C.dim, marginTop: 2 }}>tap to submit</div>}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>+{m.exp}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>{busy ? "…" : "+" + m.exp}</span>
                 </button>
               );
             })}
