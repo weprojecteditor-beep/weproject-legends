@@ -141,7 +141,8 @@ function RankRow({ idx, p, valueEl, subEl, topCol }) {
     <div style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 11,
       background: top1 ? `linear-gradient(90deg, ${topCol}1A 0%, ${C.panelSoft} 55%)` : C.panelSoft,
       border: `1px solid ${top1 ? topCol + "88" : C.line}`, clipPath: CLIP_SM, padding: "9px 12px" }}>
-      <div style={{ width: 26, height: 26, flexShrink: 0, transform: "rotate(45deg)",
+      {top1 && <div className="shine" style={{ position: "absolute", top: 0, bottom: 0, width: 60, background: `linear-gradient(100deg, transparent, ${topCol}30, transparent)` }} />}
+      <div style={{ position: "relative", width: 26, height: 26, flexShrink: 0, transform: "rotate(45deg)",
         background: top1 ? GOLD_GRAD : idx < 3 ? C.panel : "transparent", border: top1 ? "none" : `1px solid ${idx < 3 ? C.line : "transparent"}`,
         display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ transform: "rotate(-45deg)", fontSize: 12, fontWeight: 900, color: top1 ? "#0A0F28" : idx < 3 ? C.text : C.dimmer, fontFamily: "'Chakra Petch',sans-serif" }}>{idx + 1}</span>

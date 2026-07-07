@@ -93,20 +93,25 @@ function Shell({ auth, onLogout }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%", background: C.bg, color: C.text, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: "100vh", width: "100%", color: C.text, fontFamily: "'Inter', sans-serif", position: "relative",
+      background: `radial-gradient(ellipse 120% 60% at 50% -10%, #14204E 0%, ${C.bg} 55%), ${C.bg}` }}>
+      {/* faint hex-grid texture */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05,
+        backgroundImage: `repeating-linear-gradient(60deg, ${C.cyan} 0 1px, transparent 1px 46px), repeating-linear-gradient(-60deg, ${C.cyan} 0 1px, transparent 1px 46px)` }} />
       {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10, padding: "14px 16px 10px", background: `linear-gradient(${C.bg} 78%, transparent)` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10, padding: "14px 16px 10px", background: `linear-gradient(${C.bgDeep}F5 60%, transparent)` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 17, letterSpacing: "0.06em" }}>
-              WEPROJECT <span style={{ color: C.gold, textShadow: `0 0 12px ${C.gold}66` }}>LEGENDS</span>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em",
+              background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: `drop-shadow(0 0 16px ${C.gold}55)` }}>
+              WEPROJECT LEGENDS
             </div>
-            <div style={{ fontSize: 11, color: teamCol, fontWeight: 700 }}>
-              💎 {auth.name} · {auth.team === "wellous" ? "Wellous" : "WeProject"}
+            <div style={{ fontSize: 10, color: teamCol, fontWeight: 700, letterSpacing: "0.06em" }}>
+              💎 {auth.name} · {auth.team === "wellous" ? "WELLOUS" : "WEPROJECT"}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, background: `${C.gold}14`, border: `1px solid ${C.gold}44`, clipPath: CLIP_SM, padding: "4px 10px", fontFamily: "'Chakra Petch',sans-serif" }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: C.goldHi, background: `linear-gradient(180deg,${C.gold}25,${C.gold}0A)`, border: `1px solid ${C.gold}66`, clipPath: CLIP_SM, padding: "5px 12px", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 12px ${C.gold}` }}>
               🪙 {fmt(gold)}
             </div>
             <button onClick={onLogout} style={{ fontSize: 11, color: C.dim, background: C.panel, border: `1px solid ${C.line}`, clipPath: CLIP_SM, padding: "4px 9px" }}>Exit</button>
