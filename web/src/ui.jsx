@@ -1,4 +1,4 @@
-import { C, RANK_COLORS } from "./theme.js";
+import { C, RANK_COLORS, TEAM_COLORS, TEAM_LABELS } from "./theme.js";
 
 export function RankChip({ rank, small }) {
   if (!rank) return null;
@@ -90,4 +90,67 @@ export function shortTime(s) {
   // Server returns "yyyy-MM-dd HH:mm"
   const parts = String(s).split(" ");
   return parts.length > 1 ? parts[1] : s;
+}
+
+export function TeamTag({ team, small }) {
+  const col = TEAM_COLORS[team] || C.dim;
+  return (
+    <span
+      className={"font-bold rounded-full " + (small ? "text-xs px-2 py-0.5" : "text-sm px-3 py-1")}
+      style={{
+        color: col,
+        border: `1px solid ${col}66`,
+        background: `${col}1A`,
+        fontFamily: "'Chakra Petch', sans-serif",
+        letterSpacing: "0.05em",
+      }}
+    >
+      {TEAM_LABELS[team] || team}
+    </span>
+  );
+}
+
+/** 4 diamond PIN indicators — filled as digits are entered. */
+export function PinDots({ length, filled }) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      {Array.from({ length }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 16,
+            height: 16,
+            transform: "rotate(45deg)",
+            background: i < filled ? C.gold : "transparent",
+            border: `2px solid ${i < filled ? C.gold : C.line}`,
+            boxShadow: i < filled ? `0 0 10px ${C.gold}AA` : "none",
+            transition: "all .15s ease",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Numeric keypad — digits 0-9 + backspace, auto-advances via onDigit. */
+export function Keypad({ onDigit, onBackspace }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
+  return (
+    <div className="grid grid-cols-3 gap-2" style={{ maxWidth: 280, margin: "0 auto" }}>
+      {keys.map((k, i) =>
+        k === "" ? (
+          <div key={i} />
+        ) : (
+          <button
+            key={i}
+            onClick={() => (k === "⌫" ? onBackspace() : onDigit(k))}
+            className="rounded-xl py-3 text-lg font-bold"
+            style={{ background: C.panelSoft, border: `1px solid ${C.line}`, color: C.text }}
+          >
+            {k}
+          </button>
+        )
+      )}
+    </div>
+  );
 }

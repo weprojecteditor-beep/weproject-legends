@@ -22,45 +22,54 @@ export const RANK_COLORS = {
   Epic: "#9B6DFF",
   Legend: "#F5C542",
   Mythic: "#FF3B5C",
-  "Mythical Glory": "#3EE0F0",
 };
 
-// Boss phase reward metadata — API only returns { at, unlocked }.
-export const PHASE_META = {
-  75: { label: "Snack Day", icon: "🍪" },
-  50: { label: "Coffee Day", icon: "☕" },
-  25: { label: "Pizza Day", icon: "🍕" },
-  0: { label: "Leave 1hr Early", icon: "🏆" },
+// WeProject = cyan, Wellous = red (per SPEC §项目概述).
+export const TEAM_COLORS = { weproject: C.exp, wellous: C.hp };
+export const TEAM_LABELS = { weproject: "WEPROJECT", wellous: "WELLOUS" };
+
+// Hero Class is locked by role (balance); these are cosmetic choices within
+// the role's class family. Mirrors Code.gs HERO_CLASS_BY_ROLE — keep in sync.
+export const CLASS_FAMILY_BY_ROLE = { Marketer: "Carry", LiveHost: "Fighter", Editor: "Support" };
+export const HERO_CLASS_BY_ROLE = {
+  Marketer: ["Marksman", "Mage", "Assassin"],
+  LiveHost: ["Fighter", "Tank", "Berserker"],
+  Editor: ["Support", "Bard", "Summoner"],
 };
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-// "2026-07" -> "JULY"
-export function monthName(monthStr) {
-  if (!monthStr) return "";
-  const parts = String(monthStr).split("-");
-  const m = parseInt(parts[1], 10);
-  return m >= 1 && m <= 12 ? MONTHS[m - 1].toUpperCase() : String(monthStr);
-}
+export const HERO_ICONS = {
+  Marksman: "🏹", Mage: "🔮", Assassin: "🗡️",
+  Fighter: "⚔️", Tank: "🛡️", Berserker: "🪓",
+  Support: "🤝", Bard: "🎵", Summoner: "✨",
+};
 
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 
-// Days left in the boss's month, e.g. "2026-07" -> days until 31 Jul.
-// Returns null if we're not currently inside that month.
-export function daysLeftInMonth(monthStr) {
-  if (!monthStr) return null;
-  const parts = String(monthStr).split("-");
-  const y = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  if (!y || !m) return null;
-  const now = new Date();
-  if (now.getFullYear() !== y || now.getMonth() + 1 !== m) return null;
-  const lastDay = new Date(y, m, 0).getDate();
-  return Math.max(0, lastDay - now.getDate());
-}
-
 // 🥇🥈🥉 for the top three, plain number after that.
 export const medal = (i) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : String(i + 1));
+
+// Rope position (0-100) for the Live Tug bar. `scale` is the RM net that
+// pins the bar fully to one side — purely a visual reference, tune freely.
+export function ropePercent(liveNet, scale = 10000) {
+  const clamped = Math.max(-scale, Math.min(scale, liveNet || 0));
+  return 50 + (clamped / scale) * 45; // keep 5-95 so it never fully vanishes
+}
+
+// Server returns "yyyy-MM-dd HH:mm" — human "2d 5h" / "6h 12m" / "Locking…" countdown.
+export function timeUntil(target) {
+  if (!target) return "";
+  const t = new Date(String(target).replace(" ", "T"));
+  if (isNaN(t.getTime())) return "";
+  const ms = t.getTime() - Date.now();
+  if (ms <= 0) return "Locking…";
+  const hrs = Math.floor(ms / 3600000);
+  const days = Math.floor(hrs / 24);
+  if (days > 0) return `${days}d ${hrs % 24}h`;
+  const mins = Math.floor((ms % 3600000) / 60000);
+  return `${hrs}h ${mins}m`;
+}
+
+export function shortTime(s) {
+  if (!s) return "";
+  const parts = String(s).split(" ");
+  return parts.length > 1 ? parts[1] : s;
+}

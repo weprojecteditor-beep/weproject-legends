@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { C, fmt } from "../theme.js";
-import { getState, getPlayer, getShop, redeem } from "../api.js";
+import { C, TEAM_COLORS, fmt } from "../theme.js";
+import { getState, getPlayer, getShop, redeem, submitMission } from "../api.js";
 import { usePolling } from "../hooks.js";
 import { Loading, SyncBadge } from "../ui.jsx";
 import Login from "./Login.jsx";
 import Battlefield from "./Battlefield.jsx";
 import Hero from "./Hero.jsx";
+import Guide from "./Guide.jsx";
 import Shop from "./Shop.jsx";
 
 const AUTH_KEY = "wpl_auth";
@@ -38,10 +39,12 @@ function Shell({ auth, onLogout }) {
   const [tab, setTab] = useState("battle");
   const [toast, setToast] = useState(null);
 
-  const state = usePolling(getState, REFRESH_MS);
+  const stateFetch = useCallback(() => getState(auth.team), [auth.team]);
+  const state = usePolling(stateFetch, REFRESH_MS, [auth.team]);
   const playerFetch = useCallback(() => getPlayer(auth.id, auth.pin), [auth.id, auth.pin]);
   const player = usePolling(playerFetch, REFRESH_MS, [auth.id, auth.pin]);
-  const shop = usePolling(getShop, REFRESH_MS);
+  const shopFetch = useCallback(() => getShop(auth.team), [auth.team]);
+  const shop = usePolling(shopFetch, REFRESH_MS, [auth.team]);
 
   useEffect(() => {
     if (!toast) return;
@@ -50,6 +53,7 @@ function Shell({ auth, onLogout }) {
   }, [toast]);
 
   const gold = player.data?.gold ?? 0;
+  const teamCol = TEAM_COLORS[auth.team] || C.gold;
 
   const doRedeem = async (item) => {
     try {
@@ -58,7 +62,6 @@ function Shell({ auth, onLogout }) {
         setToast(`🎉 ${item.name} redeemed! Pending GM approval`);
         player.refresh();
         shop.refresh();
-        state.refresh();
       } else {
         setToast(`⚠️ ${r.error || "Redeem failed"}`);
       }
@@ -67,10 +70,24 @@ function Shell({ auth, onLogout }) {
     }
   };
 
-  // First load, nothing to show yet
+  const doMission = async (mission) => {
+    try {
+      const r = await submitMission(auth.id, auth.pin, mission.missionId);
+      if (r.ok) {
+        setToast(r.status === "pending" ? "⏳ Waiting GM approval" : "Submission cancelled");
+        player.refresh();
+      } else {
+        setToast(`⚠️ ${r.error || "Could not submit"}`);
+      }
+    } catch (e) {
+      setToast("⚠️ Could not submit — try again");
+    }
+  };
+
   const bootLoading =
     (tab === "battle" && !state.data) ||
     (tab === "hero" && !player.data) ||
+    (tab === "guide" && !state.data) ||
     (tab === "shop" && (!shop.data || !player.data));
   if (bootLoading && !state.error && !player.error && !shop.error) {
     return <Loading />;
@@ -78,8 +95,9 @@ function Shell({ auth, onLogout }) {
 
   const syncError = state.error || player.error || shop.error;
   const tabs = [
-    { id: "battle", label: "⚔️ Battlefield" },
-    { id: "hero", label: "🧙 My Hero" },
+    { id: "battle", label: "⚔ Battle" },
+    { id: "hero", label: "🧙 Hero" },
+    { id: "guide", label: "📜 Guide" },
     { id: "shop", label: "🛒 Shop" },
   ];
 
@@ -92,14 +110,11 @@ function Shell({ auth, onLogout }) {
       <div className="sticky top-0 z-10 px-4 pt-4 pb-3" style={{ background: `linear-gradient(${C.bg} 75%, transparent)` }}>
         <div className="flex items-center justify-between">
           <div>
-            <div
-              className="text-lg font-bold"
-              style={{ fontFamily: "'Chakra Petch', sans-serif", letterSpacing: "0.06em" }}
-            >
+            <div className="text-lg font-bold" style={{ fontFamily: "'Chakra Petch', sans-serif", letterSpacing: "0.06em" }}>
               WEPROJECT <span style={{ color: C.gold }}>LEGENDS</span>
             </div>
-            <div className="text-xs" style={{ color: C.dim }}>
-              {auth.name} · Season 1
+            <div className="text-xs" style={{ color: teamCol }}>
+              {auth.name} · {auth.team === "wellous" ? "Wellous" : "WeProject"}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -119,12 +134,12 @@ function Shell({ auth, onLogout }) {
           </div>
         </div>
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-1.5 mt-3">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="flex-1 rounded-xl py-2 text-sm font-bold"
+              className="flex-1 rounded-xl py-2 text-xs font-bold"
               style={{
                 background: tab === t.id ? `linear-gradient(90deg, ${C.goldDeep}, ${C.gold})` : C.panel,
                 color: tab === t.id ? "#0A0D1C" : C.dim,
@@ -143,15 +158,11 @@ function Shell({ auth, onLogout }) {
 
       {/* Body */}
       <div className="px-4 pb-8 flex flex-col gap-3" style={{ maxWidth: 560, margin: "0 auto" }}>
-        {tab === "battle" && state.data && <Battlefield state={state.data} meId={auth.id} />}
-        {tab === "hero" && player.data && <Hero player={player.data} />}
+        {tab === "battle" && state.data && <Battlefield state={state.data} meId={auth.id} team={auth.team} />}
+        {tab === "hero" && player.data && <Hero player={player.data} onMission={doMission} />}
+        {tab === "guide" && state.data && <Guide state={state.data} role={auth.role} />}
         {tab === "shop" && shop.data && player.data && (
-          <Shop
-            items={shop.data}
-            gold={gold}
-            onRedeem={doRedeem}
-            redemptions={player.data.redemptions || []}
-          />
+          <Shop items={shop.data} gold={gold} onRedeem={doRedeem} redemptions={player.data.redemptionHistory || []} />
         )}
       </div>
 
