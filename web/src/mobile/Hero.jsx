@@ -1,11 +1,19 @@
-import { C, RANK_COLORS, HERO_ICONS, fmt } from "../theme.js";
-import { Panel, SectionTitle, RankChip } from "../ui.jsx";
+import { C, Frame, Eyebrow, RankChip, Avatar, WarBar, fmt, heroClassOf, CLASS_COLOR } from "../ml.jsx";
+
+const LEVEL_REWARDS = [
+  { lv: 5, icon: "💰", label: "+100 Gold" },
+  { lv: 10, icon: "🎭", label: "Elite Skin" },
+  { lv: 15, icon: "💰", label: "+300 Gold" },
+  { lv: 20, icon: "🎭", label: "Legend Skin" },
+  { lv: 25, icon: "💰", label: "+500 Gold" },
+  { lv: 30, icon: "🏛️", label: "Hall of Fame" },
+];
 
 const MISSION_META = {
-  todo: { label: "Submit", color: C.dim, clickable: true },
-  pending: { label: "⏳ Waiting GM approval", color: C.gold, clickable: true },
-  approved: { label: "✓ EXP granted", color: C.green, clickable: false },
-  rejected: { label: "Rejected", color: C.hp, clickable: false },
+  todo: { label: "SUBMIT", color: C.gold, clickable: true },
+  pending: { label: "⏳ WAITING GM", color: C.orange, clickable: true },
+  approved: { label: "✓ EXP GRANTED", color: C.green, clickable: false },
+  rejected: { label: "REJECTED", color: C.hp, clickable: false },
 };
 
 function MissionRow({ m, onMission }) {
@@ -14,153 +22,161 @@ function MissionRow({ m, onMission }) {
     <button
       onClick={() => meta.clickable && onMission(m)}
       disabled={!meta.clickable}
-      className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-left"
-      style={{ background: C.panelSoft, border: `1px solid ${C.line}`, cursor: meta.clickable ? "pointer" : "default" }}
+      style={{
+        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+        clipPath: "polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)",
+        background: C.panelSoft, border: `1px solid ${C.line}`, padding: "9px 12px", textAlign: "left",
+        cursor: meta.clickable ? "pointer" : "default", color: C.text,
+      }}
     >
       <div>
-        <div className="text-sm">{m.text}</div>
-        <div className="text-xs" style={{ color: C.dim }}>+{m.exp} EXP</div>
+        <div style={{ fontSize: 13 }}>{m.text}</div>
+        <div style={{ fontSize: 10, color: C.dim }}>+{m.exp} EXP</div>
       </div>
-      <span className="text-xs font-bold" style={{ color: meta.color }}>{meta.label}</span>
+      <span style={{ fontSize: 10, fontWeight: 800, color: meta.color, fontFamily: "'Chakra Petch',sans-serif" }}>{meta.label}</span>
     </button>
   );
 }
 
 export default function Hero({ player, onMission }) {
-  const rankCol = RANK_COLORS[player.rank] || C.dim;
-  const nextCol = RANK_COLORS[player.nextRank] || C.gold;
-  const lvlPct = player.expToNextLevel ? Math.min(100, (player.expInLevel / player.expToNextLevel) * 100) : 100;
+  const cls = heroClassOf(player.heroClass, player.role);
+  const clsCol = CLASS_COLOR[cls] || C.gold;
+  const lvlPct = player.expToNextLevel ? (player.expInLevel / player.expToNextLevel) * 100 : 100;
   const rankTarget = player.seasonExp + (player.expToNextRank || 0);
-  const rankPct = rankTarget ? Math.min(100, (player.seasonExp / rankTarget) * 100) : 100;
+  const rankPct = rankTarget ? (player.seasonExp / rankTarget) * 100 : 100;
 
   return (
-    <div className="flex flex-col gap-3">
-      <Panel style={{ background: `linear-gradient(160deg, ${C.panel} 55%, ${rankCol}22 130%)` }}>
-        <div className="flex items-center gap-4">
-          <div className="relative flex items-center justify-center" style={{ width: 76, height: 76 }}>
-            <div className="absolute inset-0 rounded-full" style={{ border: `3px solid ${rankCol}`, boxShadow: `0 0 16px ${rankCol}77` }} />
-            <div className="text-4xl">{player.avatar || HERO_ICONS[player.heroClass] || "🦸"}</div>
-            <div
-              className="absolute rounded-full px-2 text-xs font-bold"
-              style={{ bottom: -6, background: rankCol, color: "#0A0D1C", fontFamily: "'Chakra Petch', sans-serif" }}
-            >
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Hero card */}
+      <Frame glow={clsCol}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ position: "relative" }}>
+            <Avatar p={player} size={78} />
+            <div style={{ position: "absolute", bottom: -8, left: "50%", transform: "translateX(-50%)",
+              background: C.gold, color: "#0A0D1C", fontSize: 11, fontWeight: 800, padding: "1px 8px",
+              clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%)", fontFamily: "'Chakra Petch',sans-serif", boxShadow: `0 0 10px ${C.gold}88` }}>
               Lv{player.level}
             </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xl font-bold" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{player.name}</div>
-            <div className="text-xs mb-1" style={{ color: C.dim }}>
-              {player.heroClass ? `${player.heroClass} · ${player.classFamily}` : player.role}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 20 }}>{player.name}</div>
+            <div style={{ fontSize: 11, color: clsCol, fontWeight: 700, marginBottom: 4, fontFamily: "'Chakra Petch',sans-serif" }}>
+              {cls.toUpperCase()} · {player.classFamily || player.role}
             </div>
             <RankChip rank={player.rank} small />
           </div>
-          <div className="text-right">
-            <div className="text-xl font-bold" style={{ color: C.gold, fontFamily: "'Chakra Petch', sans-serif" }}>
-              🪙 {fmt(player.gold)}
-            </div>
-            <div className="text-xs" style={{ color: C.dim }}>Gold Balance</div>
-            {player.goldPendingAdjustment && (
-              <div className="text-xs" style={{ color: C.hp }}>⚠️ pending adjustment</div>
-            )}
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 18, color: C.gold }}>🪙 {fmt(player.gold)}</div>
+            <div style={{ fontSize: 9, color: C.dim }}>GOLD</div>
+            {player.goldPendingAdjustment && <div style={{ fontSize: 9, color: C.hp }}>⚠ pending adj.</div>}
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="flex justify-between text-xs mb-1">
+        {/* Level bar */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
             <span style={{ color: C.dim }}>Lv{player.level} → Lv{player.level + 1}</span>
-            <span style={{ color: C.exp }}>{player.expInLevel}/{player.expToNextLevel} EXP</span>
+            <span style={{ color: C.cyan }}>{player.expInLevel}/{player.expToNextLevel} EXP</span>
           </div>
-          <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: "#070A16" }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${lvlPct}%`, background: `linear-gradient(90deg, #1899AC, ${C.exp})`, boxShadow: `0 0 8px ${C.exp}88` }}
-            />
-          </div>
+          <WarBar pct={lvlPct} col={C.cyan} h={10} />
 
           {player.nextRank ? (
             <>
-              <div className="flex justify-between text-xs mb-1 mt-3">
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, margin: "10px 0 3px" }}>
                 <span style={{ color: C.dim }}>Road to {player.nextRank}</span>
-                <span style={{ color: nextCol }}>{fmt(player.seasonExp)}/{fmt(rankTarget)} Season EXP</span>
+                <span style={{ color: C.gold }}>{fmt(player.seasonExp)}/{fmt(rankTarget)} Season EXP</span>
               </div>
-              <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: "#070A16" }}>
-                <div className="h-full rounded-full" style={{ width: `${rankPct}%`, background: `linear-gradient(90deg, ${C.purple}, ${nextCol})` }} />
-              </div>
+              <WarBar pct={rankPct} col={C.purple} h={10} />
             </>
           ) : (
-            <div className="text-xs mt-3" style={{ color: C.gold }}>★ Max rank reached — {fmt(player.seasonExp)} Season EXP</div>
+            <div style={{ fontSize: 11, color: C.gold, marginTop: 10, fontFamily: "'Chakra Petch',sans-serif" }}>★ MAX RANK — {fmt(player.seasonExp)} Season EXP</div>
           )}
         </div>
-      </Panel>
+      </Frame>
 
-      <Panel>
-        <SectionTitle right={<span className="text-xs" style={{ color: C.dim }}>+{player.todayExp} today</span>}>
-          DAILY MISSIONS
-        </SectionTitle>
-        {(!player.missionsToday || player.missionsToday.length === 0) ? (
-          <div className="text-sm text-center py-3" style={{ color: C.dim }}>No missions configured for your role yet.</div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {player.missionsToday.map((m) => (
-              <MissionRow key={m.missionId} m={m} onMission={onMission} />
-            ))}
-          </div>
-        )}
-      </Panel>
+      {/* Level rewards track */}
+      <Frame pad={12}>
+        <Eyebrow right={`+${player.todayExp} today`}>LEVEL REWARDS</Eyebrow>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+          {LEVEL_REWARDS.map((r) => {
+            const got = player.level >= r.lv;
+            return (
+              <div key={r.lv} style={{ textAlign: "center", clipPath: "polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)",
+                background: got ? `${C.gold}18` : C.panelSoft, border: `1px solid ${got ? C.gold + "66" : C.line}`, padding: "6px 2px", opacity: got ? 1 : 0.55 }}>
+                <div style={{ fontSize: 16, filter: got ? `drop-shadow(0 0 6px ${C.gold})` : "grayscale(1)" }}>{got ? r.icon : "🔒"}</div>
+                <div style={{ fontSize: 8, fontWeight: 800, color: got ? C.gold : C.dim, fontFamily: "'Chakra Petch',sans-serif" }}>Lv{r.lv}</div>
+                <div style={{ fontSize: 7.5, color: got ? C.text : C.dim, lineHeight: 1.2 }}>{r.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Frame>
 
+      {/* Fast climber (pace) bonus */}
       {player.paceEligible && player.paceEligible.length > 0 && (
-        <Panel style={{ border: `1px solid ${C.gold}66`, background: `${C.gold}0D` }}>
-          <SectionTitle>FAST CLIMBER</SectionTitle>
-          <div className="flex flex-col gap-2">
+        <Frame glow={C.gold} pad={12}>
+          <Eyebrow>⚡ FAST CLIMBER — EXTRA BOUNTY</Eyebrow>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {player.paceEligible.map((p, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                 <span>🏅 {p.label}</span>
-                <span className="font-bold" style={{ color: C.gold }}>+{fmt(p.bonus)} bonus</span>
+                <span style={{ fontWeight: 800, color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>+{fmt(p.bonus)}</span>
               </div>
             ))}
           </div>
-          <div className="text-xs mt-2" style={{ color: C.dim }}>Ask your GM to confirm & grant this bonus.</div>
-        </Panel>
+          <div style={{ fontSize: 10, color: C.dim, marginTop: 8 }}>Leveled up fast — your GM confirms & grants this bonus.</div>
+        </Frame>
       )}
 
-      <Panel>
-        <SectionTitle>BADGES</SectionTitle>
-        {(!player.badges || player.badges.length === 0) ? (
-          <div className="text-sm" style={{ color: C.dim }}>No badges yet — earn milestones & achievements to collect them.</div>
+      {/* Daily missions */}
+      <Frame pad={12}>
+        <Eyebrow right="tap to submit">DAILY MISSIONS</Eyebrow>
+        {(!player.missionsToday || player.missionsToday.length === 0) ? (
+          <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "8px 0" }}>No missions configured for your role yet.</div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {player.missionsToday.map((m) => <MissionRow key={m.missionId} m={m} onMission={onMission} />)}
+          </div>
+        )}
+      </Frame>
+
+      {/* Badges */}
+      <Frame pad={12}>
+        <Eyebrow>BADGES</Eyebrow>
+        {(!player.badges || player.badges.length === 0) ? (
+          <div style={{ fontSize: 12, color: C.dim }}>No badges yet — earn milestones & achievements to collect them.</div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {player.badges.map((b, i) => (
-              <span key={i} className="text-xs rounded-full px-3 py-1" style={{ background: `${C.gold}14`, color: C.gold, border: `1px solid ${C.gold}44` }}>
-                🏅 {b}
-              </span>
+              <span key={i} style={{ fontSize: 11, clipPath: "polygon(5px 0,100% 0,100% 100%,0 100%,0 5px)",
+                background: `${C.gold}14`, color: C.gold, border: `1px solid ${C.gold}44`, padding: "3px 10px" }}>🏅 {b}</span>
             ))}
           </div>
         )}
-      </Panel>
+      </Frame>
 
-      <Panel>
-        <SectionTitle>RECENT ACTIVITY</SectionTitle>
+      {/* Recent activity */}
+      <Frame pad={12}>
+        <Eyebrow>RECENT ACTIVITY</Eyebrow>
         {(!player.recentLog || player.recentLog.length === 0) ? (
-          <div className="text-sm text-center py-4" style={{ color: C.dim }}>No EXP logged yet. Your journey begins soon!</div>
+          <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "8px 0" }}>No EXP logged yet.</div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {player.recentLog.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate">{r.item || r.category}</div>
-                  <div className="text-xs" style={{ color: C.dim }}>
-                    {r.date} · {r.category}
-                    {r.amountRm ? ` · RM ${fmt(r.amountRm)}` : ""}
-                  </div>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%,0 6px)",
+                background: C.panelSoft, border: `1px solid ${C.line}`, padding: "7px 10px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.item || r.category}</div>
+                  <div style={{ fontSize: 9, color: C.dim }}>{r.date} · {r.category}{r.amountRm ? ` · RM ${fmt(r.amountRm)}` : ""}</div>
                 </div>
-                <div className="text-sm font-bold" style={{ color: r.exp < 0 ? C.hp : C.exp }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: r.exp < 0 ? C.hp : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>
                   {r.exp < 0 ? "" : "+"}{r.exp}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </Panel>
+      </Frame>
     </div>
   );
 }

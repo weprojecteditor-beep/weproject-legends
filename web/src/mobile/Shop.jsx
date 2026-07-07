@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { C, fmt } from "../theme.js";
-import { Panel, SectionTitle } from "../ui.jsx";
+import { C, Frame, Eyebrow, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
-// Sheet status -> friendly label + color
 const STATUS_META = {
-  pending: { label: "Pending", color: C.gold },
-  approved: { label: "Approved", color: C.exp },
-  fulfilled: { label: "Claimed", color: C.green },
-  rejected: { label: "Rejected", color: C.hp },
+  pending: { label: "PENDING", color: C.gold },
+  approved: { label: "APPROVED", color: C.cyan },
+  fulfilled: { label: "CLAIMED", color: C.green },
+  rejected: { label: "REJECTED", color: C.hp },
 };
 
 export default function Shop({ items, gold, onRedeem, redemptions = [] }) {
@@ -20,113 +18,78 @@ export default function Shop({ items, gold, onRedeem, redemptions = [] }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <Panel style={{ background: `linear-gradient(160deg, ${C.panel} 60%, ${C.gold}14 140%)` }}>
-        <div className="flex items-center justify-between">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Gold header */}
+      <Frame glow={C.gold} pad={0}>
+        <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: `radial-gradient(ellipse 60% 120% at 12% 40%, ${C.gold}12 0%, transparent 60%)` }}>
           <div>
-            <div
-              className="text-xs"
-              style={{ color: C.dim, letterSpacing: "0.2em", fontFamily: "'Chakra Petch', sans-serif" }}
-            >
-              MY GOLD
-            </div>
-            <div className="text-3xl font-bold" style={{ color: C.gold, fontFamily: "'Chakra Petch', sans-serif" }}>
-              🪙 {fmt(gold)}
-            </div>
+            <div style={{ fontSize: 10, color: C.dim, letterSpacing: "0.25em", fontFamily: "'Chakra Petch',sans-serif" }}>MY GOLD</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: C.gold, fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 16px ${C.gold}66` }}>🪙 {fmt(gold)}</div>
           </div>
-          <div className="text-xs text-right" style={{ color: C.dim }}>
-            Gold is earned with EXP.
-            <br />
-            Spending never affects your Rank.
+          <div style={{ fontSize: 9, color: C.dim, textAlign: "right", maxWidth: 150 }}>
+            Gold is earned with EXP.<br />Spending never affects your Rank.
           </div>
         </div>
-      </Panel>
+      </Frame>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Item grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {items.map((s) => {
           const soldOut = s.stock >= 0 && s.remaining <= 0;
           const can = gold >= s.price && !soldOut && busyId !== s.itemId;
-          const label = busyId === s.itemId
-            ? "Redeeming…"
-            : soldOut
-            ? "Sold out"
-            : gold >= s.price
-            ? "Redeem"
-            : "Not enough Gold";
+          const label = busyId === s.itemId ? "Redeeming…" : soldOut ? "Sold out" : gold >= s.price ? "REDEEM" : "Not enough";
           return (
-            <div
-              key={s.itemId}
-              className="rounded-2xl p-3 flex flex-col items-center text-center"
-              style={{ background: C.panel, border: `1px solid ${C.line}` }}
-            >
-              <div className="text-3xl mb-1">{s.icon}</div>
-              <div className="text-sm font-semibold mb-1" style={{ minHeight: 36 }}>
-                {s.name}
+            <Frame key={s.itemId} pad={12}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 4 }}>
+                <div style={{ fontSize: 30, filter: "drop-shadow(0 0 8px rgba(255,255,255,0.15))" }}>{s.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, minHeight: 32, lineHeight: 1.2 }}>{s.name}</div>
+                {s.stock >= 0 && (
+                  <div style={{ fontSize: 9, color: soldOut ? C.hp : C.dim }}>{soldOut ? "Out of stock" : `${s.remaining} left`}</div>
+                )}
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>🪙 {fmt(s.price)}</div>
+                <button
+                  onClick={() => can && handle(s)}
+                  disabled={!can}
+                  style={{
+                    width: "100%", marginTop: 4, padding: "7px 0", fontSize: 12, fontWeight: 800, clipPath: CLIP_SM,
+                    fontFamily: "'Chakra Petch',sans-serif", letterSpacing: "0.05em",
+                    background: can ? GOLD_GRAD : C.panelSoft, color: can ? "#0A0D1C" : C.dim,
+                    border: can ? "none" : `1px solid ${C.line}`, cursor: can ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {label}
+                </button>
               </div>
-              {s.stock >= 0 && (
-                <div className="text-xs mb-1" style={{ color: soldOut ? C.hp : C.dim }}>
-                  {soldOut ? "Out of stock" : `${s.remaining} left`}
-                </div>
-              )}
-              <div className="text-sm font-bold mb-2" style={{ color: C.gold, fontFamily: "'Chakra Petch', sans-serif" }}>
-                🪙 {fmt(s.price)}
-              </div>
-              <button
-                onClick={() => can && handle(s)}
-                disabled={!can}
-                className="w-full rounded-lg py-1.5 text-sm font-bold"
-                style={{
-                  background: can ? `linear-gradient(90deg, ${C.goldDeep}, ${C.gold})` : C.panelSoft,
-                  color: can ? "#0A0D1C" : C.dim,
-                  border: can ? "none" : `1px solid ${C.line}`,
-                  cursor: can ? "pointer" : "not-allowed",
-                }}
-              >
-                {label}
-              </button>
-            </div>
+            </Frame>
           );
         })}
       </div>
 
-      <Panel>
-        <SectionTitle>MY REDEMPTIONS</SectionTitle>
+      {/* Redemption history */}
+      <Frame pad={12}>
+        <Eyebrow>MY REDEMPTIONS</Eyebrow>
         {redemptions.length === 0 ? (
-          <div className="text-sm text-center py-3" style={{ color: C.dim }}>
-            No redemptions yet.
-          </div>
+          <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "8px 0" }}>No redemptions yet.</div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {redemptions.map((r, i) => {
-              const meta = STATUS_META[r.status] || { label: r.status, color: C.dim };
+              const meta = STATUS_META[r.status] || { label: String(r.status || "").toUpperCase(), color: C.dim };
               return (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2"
-                  style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate font-semibold">{r.itemName}</div>
-                    <div className="text-xs" style={{ color: C.dim }}>
-                      {r.timestamp} · 🪙 {fmt(r.goldCost)}
-                    </div>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, clipPath: CLIP_SM,
+                  background: C.panelSoft, border: `1px solid ${C.line}`, padding: "7px 10px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.itemName}</div>
+                    <div style={{ fontSize: 9, color: C.dim }}>{r.timestamp} · 🪙 {fmt(r.goldCost)}</div>
                   </div>
-                  <span
-                    className="text-xs font-semibold rounded-full px-2 py-0.5"
-                    style={{
-                      color: meta.color,
-                      border: `1px solid ${meta.color}66`,
-                      background: `${meta.color}1A`,
-                    }}
-                  >
-                    {meta.label}
-                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: meta.color, background: `${meta.color}1C`, border: `1px solid ${meta.color}66`,
+                    clipPath: CLIP_SM, padding: "2px 8px", fontFamily: "'Chakra Petch',sans-serif" }}>{meta.label}</span>
                 </div>
               );
             })}
           </div>
         )}
-      </Panel>
+      </Frame>
     </div>
   );
 }

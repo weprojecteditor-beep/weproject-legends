@@ -1,270 +1,87 @@
-import { useState, useEffect, useRef } from "react";
-import { C, TEAM_COLORS, fmt, medal, ropePercent, timeUntil } from "../theme.js";
+import { useState, useEffect } from "react";
+import { C, GOLD_GRAD, HEX, CLIP_SM, RANKS, HERO_IMG, CLASS_COLOR, ROLE_DEFAULT_CLASS, fmt } from "../ml.jsx";
 import { getTv } from "../api.js";
 import { usePolling } from "../hooks.js";
 import { Loading } from "../ui.jsx";
 
-const DATA_REFRESH_MS = 30000; // pull data every 30s
-const SCREEN_MS = 12000; // rotate screen every 12s (SPEC: 4 screens x 12s)
+const DATA_MS = 30000;
+const SCREEN_MS = 12000;
 const SCREENS = 4;
-const INTERRUPT_MS = 3000;
+
+const segRemain = (dealt, segs) => {
+  let d = dealt; const out = [];
+  for (const s of segs) { out.push(Math.max(0, s - d)); d = Math.max(0, d - s); }
+  return out;
+};
+const imgFor = (heroClass, role) => HERO_IMG[heroClass || ROLE_DEFAULT_CLASS[role] || "Fighter"];
 
 export default function TvApp() {
-  const state = usePolling(getTv, DATA_REFRESH_MS);
+  const state = usePolling(getTv, DATA_MS);
   const [screen, setScreen] = useState(0);
-  const [interrupt, setInterrupt] = useState(null);
-  const prevRef = useRef(null);
-
   useEffect(() => {
     const t = setInterval(() => setScreen((s) => (s + 1) % SCREENS), SCREEN_MS);
     return () => clearInterval(t);
   }, []);
 
-  // Detect Crystal War events (tower destroyed / lord slain / victory) between polls.
-  useEffect(() => {
-    const cur = state.data?.crystalWar;
-    const prev = prevRef.current;
-    if (cur && prev) {
-      if (cur.crystalBroken !== "none" && prev.crystalBroken === "none") {
-        fireInterrupt(`VICTORY — ${cur.crystalBroken.toUpperCase()} WINS`);
-      } else if (cur.wpTowers > prev.wpTowers || cur.wlTowers > prev.wlTowers) {
-        fireInterrupt("TOWER DESTROYED");
-      } else if (cur.lord?.side !== "none" && cur.lord?.date !== prev.lord?.date) {
-        fireInterrupt(`LORD HAS BEEN SLAIN — ${cur.lord.side.toUpperCase()} DMG ×2`);
-      }
-    }
-    if (cur) prevRef.current = cur;
-  }, [state.data]);
-
-  function fireInterrupt(text) {
-    setInterrupt(text);
-    setTimeout(() => setInterrupt(null), INTERRUPT_MS);
-  }
-
   if (!state.data && !state.error) return <Loading label="Summoning heroes…" />;
   if (!state.data) return <Loading label="Data sync failed — retrying…" />;
-
-  const data = state.data;
+  const d = state.data;
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        overflow: "hidden",
-        background: C.bg,
-        color: C.text,
-        fontFamily: "'Inter', sans-serif",
-        position: "relative",
-        boxSizing: "border-box",
-        padding: "3vh 3vw",
-      }}
-    >
+    <div style={{ width: "100vw", height: "100vh", overflow: "hidden", background: C.bg, color: C.text, fontFamily: "'Inter',sans-serif", boxSizing: "border-box", padding: "3vh 3vw", position: "relative" }}>
+      <style>{`
+        @keyframes cpz {0%,100%{transform:scale(1);filter:drop-shadow(0 0 10px currentColor);}50%{transform:scale(1.12);filter:drop-shadow(0 0 26px currentColor);}}
+        .cpz{animation:cpz 1.6s ease-in-out infinite;}
+        @keyframes fin{from{opacity:0;transform:translateX(2vw);}to{opacity:1;transform:none;}}
+        .fin{animation:fin .5s ease both;}
+      `}</style>
+
       {/* Header */}
-      <div className="flex items-center justify-between" style={{ marginBottom: "2vh" }}>
-        <div>
-          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: "2.4vw", fontWeight: 700, letterSpacing: "0.06em" }}>
-            WEPROJECT <span style={{ color: C.gold }}>LEGENDS</span>
-          </div>
-          <div style={{ color: C.dim, fontSize: "1vw" }}>Crystal War · Week {data.crystalWar.weekNo}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2vh" }}>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.4vw", letterSpacing: "0.06em" }}>
+          WEPROJECT <span style={{ color: C.gold }}>LEGENDS</span>
         </div>
-        <div className="flex items-center gap-4">
-          {state.error && <div style={{ color: C.hp, fontSize: "1vw" }}>⚠ Data sync failed</div>}
-          <div style={{ color: C.green, fontSize: "1.1vw", fontWeight: 700 }}>● LIVE</div>
-        </div>
+        <div style={{ color: C.green, fontWeight: 800, fontSize: "1.1vw" }}>● LIVE · CRYSTAL WAR</div>
       </div>
 
-      <div style={{ height: "82vh" }}>
-        {screen === 0 && <CrystalWarScreen cw={data.crystalWar} factions={data.factions} />}
-        {screen === 1 && <FactionScreen team="weproject" faction={data.factions.weproject} />}
-        {screen === 2 && <FactionScreen team="wellous" faction={data.factions.wellous} />}
-        {screen === 3 && <MixedFeedScreen feed={data.mixedFeed} />}
+      <div style={{ height: "84vh" }}>
+        {screen === 0 && <CrystalScreen cw={d.crystalWar || {}} />}
+        {screen === 1 && <FactionScreen team="weproject" label="WE PROJECT" col={C.cyan} f={d.factions?.weproject} />}
+        {screen === 2 && <FactionScreen team="wellous" label="WELLOUS" col={C.enemy} f={d.factions?.wellous} />}
+        {screen === 3 && <FeedScreen feed={d.mixedFeed} />}
       </div>
 
-      <div className="flex justify-center gap-3" style={{ position: "absolute", bottom: "1.5vh", left: 0, right: 0 }}>
-        {Array.from({ length: SCREENS }).map((_, i) => (
-          <div key={i} style={{ width: "1vw", height: "1vw", borderRadius: "50%", background: i === screen ? C.gold : C.line, transition: "background 0.3s" }} />
+      <div style={{ display: "flex", justifyContent: "center", gap: "1.2vw", position: "absolute", bottom: "1.6vh", left: 0, right: 0 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} style={{ width: "1vw", height: "1vw", borderRadius: "50%", background: i === screen ? C.gold : C.line, transition: "background .3s" }} />
         ))}
       </div>
-
-      {interrupt && <Interrupt text={interrupt} />}
     </div>
   );
 }
 
-function Interrupt({ text }) {
+function TvBase({ label, col, dealtOnThem, segs }) {
+  const rem = segRemain(dealtOnThem, segs);
+  const names = ["TOWER I", "TOWER II", "CRYSTAL"];
+  const icons = ["🗼", "🗼", "💎"];
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(10,13,28,0.92)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
-        animation: "toastIn .25s ease both",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "5vw",
-          color: C.gold, textAlign: "center", textShadow: `0 0 40px ${C.gold}AA`, letterSpacing: "0.05em",
-        }}
-      >
-        {text}
-      </div>
-    </div>
-  );
-}
-
-function CrystalWarScreen({ cw, factions }) {
-  const rope = ropePercent(cw.liveNet);
-  const wpDanger = (cw.wlTowers / cw.towersPerSide) * 100;
-  const wlDanger = (cw.wpTowers / cw.towersPerSide) * 100;
-  const wpDmgToday = (factions.weproject.top3Damage || []).reduce((s, p) => s + p.damage, 0);
-  const wlDmgToday = (factions.wellous.top3Damage || []).reduce((s, p) => s + p.damage, 0);
-
-  return (
-    <div className="flex flex-col justify-center h-full">
-      <div style={{ color: C.dim, fontSize: "1.4vw", letterSpacing: "0.2em", fontFamily: "'Chakra Petch', sans-serif", textAlign: "center", marginBottom: "2vh" }}>
-        Banks Sunday 23:59 · {timeUntil(cw.lockAt)} left
-      </div>
-
-      <div className="flex items-center justify-center gap-12" style={{ marginBottom: "3vh" }}>
-        <BigCrystal team="weproject" dangerPct={wpDanger} />
-        <div style={{ fontSize: "4vw", fontWeight: 700, color: C.gold, fontFamily: "'Chakra Petch', sans-serif" }}>VS</div>
-        <BigCrystal team="wellous" dangerPct={wlDanger} />
-      </div>
-
-      <div className="flex items-center justify-center gap-8" style={{ marginBottom: "2vh" }}>
-        <BigTowers destroyed={cw.wlTowers} total={cw.towersPerSide} color={TEAM_COLORS.weproject} />
-        <BigTowers destroyed={cw.wpTowers} total={cw.towersPerSide} color={TEAM_COLORS.wellous} />
-      </div>
-
-      <div className="relative w-full rounded-full overflow-hidden" style={{ height: "5vh", background: "#070A16", border: `2px solid ${C.line}`, margin: "0 auto", maxWidth: "60vw" }}>
-        <div className="absolute top-0 h-full" style={{ left: "50%", width: 3, background: C.line }} />
-        <div
-          className="absolute top-0 h-full rounded-full"
-          style={{
-            width: "3vh", left: `calc(${rope}% - 1.5vh)`,
-            background: cw.liveNet >= 0 ? TEAM_COLORS.weproject : TEAM_COLORS.wellous,
-            boxShadow: `0 0 20px ${cw.liveNet >= 0 ? TEAM_COLORS.weproject : TEAM_COLORS.wellous}AA`,
-            transition: "left 1s ease",
-          }}
-        />
-      </div>
-      <div className="flex justify-center gap-16 mt-3" style={{ fontSize: "1.6vw", fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700 }}>
-        <span style={{ color: TEAM_COLORS.weproject }}>WEPROJECT {fmt(wpDmgToday)}</span>
-        <span style={{ color: TEAM_COLORS.wellous }}>WELLOUS {fmt(wlDmgToday)}</span>
-      </div>
-    </div>
-  );
-}
-
-function BigCrystal({ team, dangerPct }) {
-  const col = TEAM_COLORS[team];
-  const intensity = 0.35 + (dangerPct / 100) * 0.65;
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div
-        className="crystal-glow"
-        style={{
-          width: "9vw", height: "9vw", borderRadius: "1.5vw", transform: "rotate(45deg)",
-          background: `linear-gradient(160deg, ${col}33, ${col}99)`,
-          border: `3px solid ${col}`,
-          boxShadow: `0 0 ${20 + intensity * 40}px ${col}${dangerPct >= 66 ? "DD" : "88"}`,
-          animation: dangerPct >= 66 ? "crystalPulse 1s ease-in-out infinite" : "none",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <span style={{ transform: "rotate(-45deg)", fontSize: "3vw" }}>💎</span>
-      </div>
-      <div style={{ color: col, fontWeight: 700, fontSize: "1.4vw", fontFamily: "'Chakra Petch', sans-serif" }}>
-        {team === "weproject" ? "WEPROJECT" : "WELLOUS"}
-      </div>
-    </div>
-  );
-}
-
-function BigTowers({ destroyed, total, color }) {
-  return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} style={{ fontSize: "2vw", opacity: i < destroyed ? 0.2 : 1 }}>{i < destroyed ? "💥" : "🗼"}</span>
-      ))}
-      <span style={{ color, fontSize: "1.1vw", marginLeft: "0.5vw" }}>{total - destroyed}/{total}</span>
-    </div>
-  );
-}
-
-function FactionScreen({ team, faction }) {
-  const col = TEAM_COLORS[team];
-  const top3 = faction.top3Damage || [];
-  const feed = faction.feed || [];
-  return (
-    <div className="grid grid-cols-2 gap-6 h-full">
-      <div className="flex flex-col">
-        <div style={{ color: col, fontSize: "1.8vw", fontWeight: 700, letterSpacing: "0.15em", fontFamily: "'Chakra Petch', sans-serif", marginBottom: "2vh" }}>
-          {team === "weproject" ? "WEPROJECT" : "WELLOUS"} · TOP DAMAGE
-        </div>
-        <div className="flex flex-col gap-3">
-          {top3.length === 0 && <Empty text="No damage yet" />}
-          {top3.map((p, i) => (
-            <div key={p.playerId} className="rounded-2xl flex items-center gap-4" style={{ padding: "1.6vh 1.2vw", background: C.panelSoft, border: `2px solid ${i === 0 ? col + "88" : C.line}` }}>
-              <div style={{ width: "2.5vw", textAlign: "center", fontSize: "2vw", fontWeight: 700, color: i === 0 ? col : C.text, fontFamily: "'Chakra Petch', sans-serif" }}>{medal(i)}</div>
-              <div className="flex-1 min-w-0">
-                <div style={{ fontSize: "1.8vw", fontWeight: 700 }}>{p.name}</div>
-                <div style={{ color: C.dim, fontSize: "1vw" }}>{p.role}</div>
-              </div>
-              <div style={{ fontSize: "1.9vw", fontWeight: 700, color: col, fontFamily: "'Chakra Petch', sans-serif" }}>{fmt(p.damage)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-col">
-        <div style={{ color: C.dim, fontSize: "1.6vw", letterSpacing: "0.2em", fontFamily: "'Chakra Petch', sans-serif", marginBottom: "2vh" }}>
-          TODAY'S ACHIEVEMENTS
-        </div>
-        <div className="flex flex-col gap-3 flex-1" style={{ overflow: "hidden" }}>
-          {feed.length === 0 && <Empty text="No achievements yet today" />}
-          {feed.slice(0, 5).map((f, i) => (
-            <div key={i} className="feed-item flex items-center gap-4 rounded-2xl" style={{ padding: "1.4vh 1.2vw", background: C.panelSoft, border: `2px solid ${C.line}` }}>
-              <div style={{ fontSize: "2.2vw" }}>{f.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div style={{ color: C.gold, fontSize: "1.1vw", fontWeight: 700, fontFamily: "'Chakra Petch', sans-serif" }}>{f.tag}</div>
-                <div style={{ fontSize: "1.3vw" }}>
-                  <span style={{ fontWeight: 700 }}>{f.name}</span>
-                  <span style={{ color: C.dim }}> · {f.description}</span>
-                </div>
-              </div>
-              <div style={{ color: C.exp, fontSize: "1.6vw", fontWeight: 700, fontFamily: "'Chakra Petch', sans-serif" }}>+{f.exp}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MixedFeedScreen({ feed }) {
-  const rows = feed || [];
-  return (
-    <div className="flex flex-col h-full">
-      <div style={{ color: C.dim, fontSize: "1.6vw", letterSpacing: "0.2em", fontFamily: "'Chakra Petch', sans-serif", marginBottom: "1.5vh" }}>
-        TODAY'S ACHIEVEMENTS <span style={{ color: C.green }}>● LIVE</span>
-      </div>
-      <div className="grid grid-cols-2 gap-4 flex-1 content-start" style={{ overflow: "hidden" }}>
-        {rows.length === 0 && <Empty text="No achievements yet today — go get First Blood! ⚔️" />}
-        {rows.slice(0, 8).map((f, i) => {
-          const col = TEAM_COLORS[f.team] || C.dim;
+    <div style={{ flex: 1 }}>
+      <div style={{ textAlign: "center", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2vw", color: col, textShadow: `0 0 16px ${col}88`, marginBottom: "2vh" }}>{label}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.6vh" }}>
+        {segs.map((full, i) => {
+          const left = rem[i]; const down = left === 0;
+          const pct = full > 0 ? (left / full) * 100 : 0;
+          const isCrystal = i === 2;
           return (
-            <div key={i} className="feed-item flex items-center gap-4 rounded-2xl" style={{ padding: "1.6vh 1.2vw", background: C.panelSoft, border: `2px solid ${col}55` }}>
-              <div style={{ fontSize: "2.4vw" }}>💎</div>
-              <div style={{ fontSize: "2.6vw" }}>{f.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div style={{ color: C.gold, fontSize: "1.2vw", fontWeight: 700, letterSpacing: "0.1em", fontFamily: "'Chakra Petch', sans-serif" }}>{f.tag}</div>
-                <div style={{ fontSize: "1.5vw" }}>
-                  <span style={{ fontWeight: 700 }}>{f.name}</span>
-                  <span style={{ color: col }}> · {f.team}</span>
-                </div>
+            <div key={i} style={{ clipPath: CLIP_SM, padding: "1.4vh 1.2vw", background: down ? "#0A0D22" : `${col}10`, border: `2px solid ${down ? C.line : col + "77"}`, opacity: down ? 0.5 : 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.8vh" }}>
+                <span className={isCrystal && !down ? "cpz" : ""} style={{ fontSize: isCrystal ? "2.6vw" : "1.8vw", color: col, filter: down ? "grayscale(1)" : `drop-shadow(0 0 12px ${col})` }}>{down ? "💥" : icons[i]}</span>
+                <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "1vw", color: down ? C.dimmer : col, textDecoration: down ? "line-through" : "none" }}>{down ? "DESTROYED" : names[i]}</span>
+                <span style={{ fontSize: "1vw", color: C.dim }}>{down ? "" : fmt(left) + " HP"}</span>
               </div>
-              <div style={{ color: C.exp, fontSize: "1.8vw", fontWeight: 700, fontFamily: "'Chakra Petch', sans-serif" }}>+{f.exp}</div>
+              <div style={{ transform: "skewX(-12deg)", height: "1.4vh", background: "#02040D", border: `1px solid ${col}44`, borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: down ? "transparent" : `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: down ? "none" : `0 0 14px ${col}`, transition: "width 1s ease" }} />
+              </div>
             </div>
           );
         })}
@@ -273,10 +90,107 @@ function MixedFeedScreen({ feed }) {
   );
 }
 
-function Empty({ text }) {
+function CrystalScreen({ cw }) {
+  const segs = cw.segs && cw.segs.length ? cw.segs : [300000, 300000, 400000];
+  const wpBaseRem = segRemain(cw.dealtByWl || 0, segs).reduce((a, b) => a + b, 0); // WP base drained by WL
+  const wlBaseRem = segRemain(cw.dealtByWp || 0, segs).reduce((a, b) => a + b, 0);
+  const wpWinning = wlBaseRem < wpBaseRem;
   return (
-    <div className="flex items-center justify-center w-full" style={{ color: C.dim, fontSize: "1.4vw", padding: "4vh 0" }}>
-      {text}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3vw", marginBottom: "3vh" }}>
+        <div style={{ color: C.cyan, fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.6vw", textShadow: `0 0 18px ${C.cyan}` }}>{wpWinning ? "▲ LEADING" : ""}</div>
+        <div style={{ width: "5vw", height: "5vw", transform: "rotate(45deg)", background: GOLD_GRAD, padding: 2, boxShadow: `0 0 40px ${C.gold}` }}>
+          <div style={{ width: "100%", height: "100%", background: "#0A0F28", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.4vw", color: C.goldHi }}>VS</span>
+          </div>
+        </div>
+        <div style={{ color: C.enemy, fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.6vw", textShadow: `0 0 18px ${C.enemy}` }}>{!wpWinning ? "LEADING ▼" : ""}</div>
+      </div>
+      <div style={{ display: "flex", gap: "4vw", padding: "0 2vw" }}>
+        <TvBase label="WE PROJECT BASE" col={C.cyan} dealtOnThem={cw.dealtByWl || 0} segs={segs} />
+        <TvBase label="WELLOUS BASE" col={C.enemy} dealtOnThem={cw.dealtByWp || 0} segs={segs} />
+      </div>
+      <div style={{ textAlign: "center", marginTop: "3vh", fontSize: "1.2vw", color: C.dim }}>
+        Today — <b style={{ color: C.cyan }}>WeProject {fmt(cw.wpToday || 0)}</b> · <b style={{ color: C.enemy }}>Wellous {fmt(cw.wlToday || 0)}</b> damage dealt
+      </div>
+    </div>
+  );
+}
+
+function FactionScreen({ label, col, f }) {
+  const top3 = (f && f.top3Damage) || [];
+  const feed = (f && f.feed) || [];
+  return (
+    <div style={{ display: "flex", gap: "3vw", height: "100%" }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.4vw", color: col, textShadow: `0 0 18px ${col}88`, marginBottom: "2vh" }}>💎 {label} · TOP DAMAGE</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.6vh" }}>
+          {top3.length === 0 && <div style={{ color: C.dim, fontSize: "1.4vw" }}>No damage yet.</div>}
+          {top3.map((p, i) => (
+            <div key={p.playerId} style={{ display: "flex", alignItems: "center", gap: "1.4vw", clipPath: CLIP_SM, background: `${col}10`, border: `2px solid ${i === 0 ? col + "88" : C.line}`, padding: "1.4vh 1.4vw" }}>
+              <div style={{ fontSize: "2.2vw", fontWeight: 800, color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch',sans-serif", width: "3vw", textAlign: "center" }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</div>
+              <HexImg heroClass={p.heroClass} role={p.role} col={col} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "2vw" }}>{p.name}</div>
+                <div style={{ fontSize: "1vw", color: C.dim }}>{p.role}</div>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: "2vw", color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch',sans-serif" }}>{fmt(p.damage)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "1.8vw", color: C.gold, marginBottom: "2vh" }}>TODAY'S ACHIEVEMENTS</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.2vh" }}>
+          {feed.length === 0 && <div style={{ color: C.dim, fontSize: "1.4vw" }}>Nothing yet today.</div>}
+          {feed.slice(0, 6).map((fi, i) => (
+            <div key={i} className="fin" style={{ display: "flex", alignItems: "center", gap: "1.2vw", clipPath: CLIP_SM, background: C.panelSoft, border: `2px solid ${C.line}`, padding: "1.2vh 1.2vw", animationDelay: `${i * 0.08}s` }}>
+              <div style={{ fontSize: "2.2vw" }}>{fi.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: C.gold, fontWeight: 800, fontSize: "1vw", fontFamily: "'Chakra Petch',sans-serif" }}>{fi.tag}</div>
+                <div style={{ fontSize: "1.3vw" }}><b>{fi.name}</b> <span style={{ color: C.dim }}>· {fi.description}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeedScreen({ feed }) {
+  const rows = feed || [];
+  return (
+    <div style={{ height: "100%" }}>
+      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.2vw", color: C.gold, marginBottom: "2vh" }}>TODAY'S ACHIEVEMENTS · <span style={{ color: C.green }}>● LIVE</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.6vw", alignContent: "start" }}>
+        {rows.length === 0 && <div style={{ color: C.dim, fontSize: "1.6vw" }}>No achievements yet today — go get First Blood! ⚔️</div>}
+        {rows.slice(0, 8).map((f, i) => {
+          const teamCol = f.team === "wellous" ? C.enemy : C.cyan;
+          return (
+            <div key={i} className="fin" style={{ display: "flex", alignItems: "center", gap: "1.4vw", clipPath: CLIP_SM, background: C.panelSoft, border: `2px solid ${teamCol}55`, padding: "1.6vh 1.4vw", animationDelay: `${i * 0.1}s` }}>
+              <div style={{ fontSize: "2.8vw" }}>{f.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: C.gold, fontWeight: 800, fontSize: "1.1vw", fontFamily: "'Chakra Petch',sans-serif" }}>{f.tag} <span style={{ color: teamCol }}>💎</span></div>
+                <div style={{ fontSize: "1.5vw" }}><b>{f.name}</b> <span style={{ color: C.dim }}>· {f.description}</span></div>
+              </div>
+              {f.exp > 0 && <div style={{ color: C.cyan, fontWeight: 800, fontSize: "1.8vw", fontFamily: "'Chakra Petch',sans-serif" }}>+{f.exp}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HexImg({ heroClass, role, col }) {
+  const img = imgFor(heroClass, role);
+  return (
+    <div style={{ position: "relative", width: "4vw", height: "4vw", flexShrink: 0 }}>
+      <div style={{ position: "absolute", inset: 0, clipPath: HEX, background: `radial-gradient(circle at 50% 30%, ${col}40, #060A1E 75%)`, overflow: "hidden" }}>
+        {img && <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />}
+      </div>
+      <div style={{ position: "absolute", inset: 0, clipPath: HEX, boxShadow: `0 0 16px ${col}66` }} />
     </div>
   );
 }

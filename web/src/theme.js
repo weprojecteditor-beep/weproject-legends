@@ -1,25 +1,20 @@
 // ---------- Design tokens (from weproject-legends-dashboard.jsx) ----------
 export const C = {
-  bg: "#0A0D1C",
-  panel: "#12172B",
-  panelSoft: "#1A2038",
-  line: "#232B4A",
-  gold: "#F5C542",
-  goldDeep: "#C89A1F",
-  hp: "#FF3B5C",
-  hpDeep: "#8E1230",
-  exp: "#3EE0F0",
-  purple: "#9B6DFF",
-  green: "#4ADE80",
-  text: "#E8ECFF",
-  dim: "#8A93B8",
+  bg: "#040820", bgDeep: "#02040F",
+  panel: "#0A1130", panelSoft: "#111A3E", line: "#1D2A55",
+  gold: "#F5C542", goldHi: "#FFE79A", goldDeep: "#8A6510",
+  hp: "#FF3B5C", hpDeep: "#7A0E28",
+  cyan: "#3EE0F0", exp: "#3EE0F0", // exp = cyan (legacy alias)
+  purple: "#A86BFF", green: "#4ADE80", orange: "#FFA940",
+  enemy: "#FF4444",
+  text: "#EDF1FF", dim: "#8C96C4", dimmer: "#525C8A",
 };
 
 export const RANK_COLORS = {
   Warrior: "#9CA3AF",
   Elite: "#CD7F32",
-  Master: "#C0C0C0",
-  Epic: "#9B6DFF",
+  Master: "#C8CDD8",
+  Epic: "#A86BFF",
   Legend: "#F5C542",
   Mythic: "#FF3B5C",
 };
