@@ -1,285 +1,349 @@
-import { C, fmt, medal, ropePercent, timeUntil } from "../theme.js";
-import { Panel, SectionTitle } from "../ui.jsx";
+// Battle tab — ported to the reference "Mobile Legends" design (glowing Crystal
+// War, hexagon hero avatars, attack ranking). Styling is self-contained here so
+// the rest of the app keeps building while the other tabs are upgraded.
 
-function Crystal({ dangerPct, label, mine }) {
-  // dangerPct: 0 = full health (bright glow), 100 = about to shatter (cracked/flicker).
-  const glowCol = dangerPct >= 100 ? C.hp : mine ? C.exp : C.hp;
-  const intensity = 0.35 + (dangerPct / 100) * 0.65;
+const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+
+const C = {
+  bg: "#040820", panel: "#0A1130", panelSoft: "#111A3E", line: "#1D2A55",
+  gold: "#F5C542", goldHi: "#FFE79A", hp: "#FF3B5C", hpDeep: "#7A0E28",
+  cyan: "#3EE0F0", purple: "#A86BFF", green: "#4ADE80", enemy: "#FF4444",
+  text: "#EDF1FF", dim: "#8C96C4", dimmer: "#525C8A",
+};
+const GOLD_GRAD = "linear-gradient(135deg,#FFE79A 0%,#F5C542 30%,#9A7418 55%,#F5C542 80%,#FFE79A 100%)";
+const RANKS = {
+  Warrior: "#9CA3AF", Elite: "#CD7F32", Master: "#C8CDD8",
+  Epic: "#A86BFF", Legend: "#F5C542", Mythic: "#FF3B5C",
+};
+const CLIP = "polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)";
+const CLIP_SM = "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)";
+const HEX = "polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)";
+
+// 9 classes → 3 available portraits (chosen: reuse the 3 we have)
+const HERO_IMG = {
+  Marksman: "/avatars/marksman.png", Mage: "/avatars/assassin.png", Assassin: "/avatars/assassin.png",
+  Fighter: "/avatars/fighter.png", Tank: "/avatars/fighter.png", Berserker: "/avatars/fighter.png",
+  Support: "/avatars/assassin.png", Bard: "/avatars/assassin.png", Summoner: "/avatars/assassin.png",
+};
+const CLASS_COLOR = {
+  Marksman: "#FFB800", Mage: "#A86BFF", Assassin: "#B368FF",
+  Fighter: "#FF5544", Tank: "#4488FF", Berserker: "#FF7A2A",
+  Support: "#4ADE80", Bard: "#4ADE80", Summoner: "#4ADE80",
+};
+const ROLE_DEFAULT_CLASS = { Marketer: "Marksman", LiveHost: "Fighter", Editor: "Assassin", Salesperson: "Marksman" };
+const ROLE_COLOR = { Marketer: "#3EE0F0", LiveHost: "#FF6B9D", Editor: "#A86BFF", Salesperson: "#FFB800" };
+
+function heroClassOf(p) { return p.heroClass || ROLE_DEFAULT_CLASS[p.role] || "Fighter"; }
+
+// ── Shared bits ──────────────────────────────────────────────
+function Frame({ children, glow, pad = 14, style }) {
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div
-        className="crystal-glow flex items-center justify-center"
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 14,
-          transform: "rotate(45deg)",
-          background: `linear-gradient(160deg, ${glowCol}33, ${glowCol}88)`,
-          border: `2px solid ${glowCol}`,
-          boxShadow: `0 0 ${14 + intensity * 20}px ${glowCol}${dangerPct >= 66 ? "CC" : "77"}`,
-          animation: dangerPct >= 66 ? "crystalPulse 1s ease-in-out infinite" : "none",
-        }}
-      >
-        <span style={{ transform: "rotate(-45deg)", fontSize: 20 }}>💎</span>
-      </div>
-      <div className="text-xs font-bold" style={{ color: glowCol, fontFamily: "'Chakra Petch', sans-serif" }}>
-        {label}
+    <div style={{ background: GOLD_GRAD, clipPath: CLIP, padding: 1.5,
+      filter: glow ? `drop-shadow(0 0 14px ${glow}55)` : "drop-shadow(0 4px 12px rgba(0,0,0,0.5))", ...style }}>
+      <div style={{ background: `linear-gradient(160deg, ${C.panel} 0%, #0D1538 100%)`,
+        clipPath: CLIP, padding: pad, position: "relative", overflow: "hidden" }}>
+        {children}
       </div>
     </div>
   );
 }
-
-function Towers({ destroyed, total, color }) {
+function Eyebrow({ children, right }) {
   return (
-    <div className="flex gap-1">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} style={{ fontSize: 18, opacity: i < destroyed ? 0.25 : 1 }}>
-          {i < destroyed ? "💥" : "🗼"}
-        </span>
-      ))}
-      <span className="text-xs ml-1" style={{ color, alignSelf: "center" }}>
-        {total - destroyed}/{total}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <span style={{ color: C.gold, fontSize: 10, fontWeight: 800, letterSpacing: "0.25em",
+        fontFamily: "'Chakra Petch',sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ width: 5, height: 5, background: C.gold, transform: "rotate(45deg)" }} />{children}
       </span>
+      {right && <span style={{ color: C.dim, fontSize: 10 }}>{right}</span>}
     </div>
   );
 }
-
-function CrystalWarCard({ cw, buffs }) {
-  const rope = ropePercent(cw.liveNet);
-  const ourDanger = (cw.enemyTowers / cw.towersPerSide) * 100; // enemy towers destroyed OF OURS = danger to our crystal
-  const enemyDanger = (cw.ourTowers / cw.towersPerSide) * 100;
-  const victory = cw.crystalBroken === "us" || cw.crystalBroken === "enemy";
-
+function RankChip({ rank, small }) {
+  if (!rank) return null;
+  const col = RANKS[rank] || C.dim;
   return (
-    <Panel
-      style={{
-        background: `linear-gradient(160deg, ${C.panel} 55%, ${cw.liveLeader === "us" ? C.exp : cw.liveLeader === "enemy" ? C.hp : C.purple}18 140%)`,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <SectionTitle right={<span className="text-xs" style={{ color: C.dim }}>Week {cw.weekNo} · banks {timeUntil(cw.lockAt)}</span>}>
-        CRYSTAL WAR · ONE FIGHT, TWO FRONTS
-      </SectionTitle>
-
-      {victory && (
-        <div
-          className="rounded-lg text-center text-sm font-bold mb-3 py-2"
-          style={{ background: `${C.gold}22`, color: C.gold, border: `1px solid ${C.gold}66`, fontFamily: "'Chakra Petch', sans-serif" }}
-        >
-          {cw.crystalBroken === "us" ? "🏆 CRYSTAL SHATTERED — YOUR TEAM WINS" : "💔 CRYSTAL SHATTERED — ENEMY WINS"}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between px-2 mb-3">
-        <Crystal dangerPct={ourDanger} label="YOUR BASE" mine />
-        <div className="text-xl font-bold" style={{ color: C.gold, fontFamily: "'Chakra Petch', sans-serif" }}>VS</div>
-        <Crystal dangerPct={enemyDanger} label="ENEMY BASE" mine={false} />
-      </div>
-
-      <div className="flex items-center justify-between px-1 mb-2">
-        <Towers destroyed={cw.enemyTowers} total={cw.towersPerSide} color={C.exp} />
-        <Towers destroyed={cw.ourTowers} total={cw.towersPerSide} color={C.hp} />
-      </div>
-
-      <div className="text-xs text-center mb-1" style={{ color: C.dim }}>This week · net lead</div>
-      <div className="relative w-full rounded-full overflow-hidden" style={{ height: 16, background: "#070A16", border: `1px solid ${C.line}` }}>
-        <div className="absolute top-0 h-full" style={{ left: "50%", width: 2, background: C.line }} />
-        <div
-          className="absolute top-0 h-full rounded-full"
-          style={{
-            width: 10,
-            left: `calc(${rope}% - 5px)`,
-            background: cw.liveLeader === "us" ? C.exp : cw.liveLeader === "enemy" ? C.hp : C.dim,
-            boxShadow: `0 0 10px ${cw.liveLeader === "us" ? C.exp : C.hp}AA`,
-            transition: "left 1s ease",
-          }}
-        />
-      </div>
-      <div className="flex justify-between text-xs mt-1">
-        <span style={{ color: C.exp }}>You +{fmt(Math.max(0, cw.liveNet))}</span>
-        <span style={{ color: C.hp }}>Enemy +{fmt(Math.max(0, -cw.liveNet))}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <div
-          className="rounded-lg text-center text-xs font-bold py-1.5"
-          style={{
-            background: buffs?.powerCreep?.status === "slain" ? `${C.gold}1A` : C.panelSoft,
-            border: `1px solid ${buffs?.powerCreep?.status === "slain" ? C.gold + "66" : C.line}`,
-            color: buffs?.powerCreep?.status === "slain" ? C.gold : C.dim,
-          }}
-        >
-          {buffs?.powerCreep?.status === "slain" ? "⚡ POWER CREEP CLAIMED" : "⚡ Power Creep Alive"}
-        </div>
-        <div
-          className="rounded-lg text-center text-xs font-bold py-1.5"
-          style={{
-            background: cw.lord?.side === "us" ? `${C.exp}1A` : cw.lord?.side === "enemy" ? `${C.hp}1A` : C.panelSoft,
-            border: `1px solid ${cw.lord?.side !== "none" ? (cw.lord?.side === "us" ? C.exp : C.hp) + "66" : C.line}`,
-            color: cw.lord?.side === "us" ? C.exp : cw.lord?.side === "enemy" ? C.hp : C.dim,
-          }}
-        >
-          {cw.lord?.side === "us" ? "👑 LORD — YOUR DMG ×2" : cw.lord?.side === "enemy" ? "👑 LORD — ENEMY DMG ×2" : "👑 Lord Alive"}
-        </div>
-      </div>
-      {(buffs?.lord?.recordBrokenToday?.weproject || buffs?.lord?.recordBrokenToday?.wellous) && (
-        <div className="text-xs text-center mt-2" style={{ color: C.gold }}>
-          ⚠️ A daily revenue record was just broken — Lord ×2 pending GM confirmation
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function LaneMatchups({ rows, meId }) {
-  return (
-    <Panel>
-      <SectionTitle right={<span className="text-xs" style={{ color: C.dim }}>#1 vs #1…</span>}>
-        LANE MATCHUPS
-      </SectionTitle>
-      {rows.length === 0 ? (
-        <div className="text-sm text-center py-4" style={{ color: C.dim }}>No matchups yet — deal some damage!</div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {rows.map((m) => {
-            const isMe = m.us.name && meId; // us side always local team; highlight not player-specific here
-            return (
-              <div
-                key={m.slot}
-                className="rounded-xl px-3 py-2 flex items-center gap-2"
-                style={{
-                  background: C.panelSoft,
-                  border: `1px solid ${m.ko === "us" ? C.exp + "88" : m.ko === "enemy" ? C.hp + "88" : C.line}`,
-                }}
-              >
-                <div className="flex-1 min-w-0 text-right">
-                  <div className="text-sm font-semibold truncate">{m.us.name}</div>
-                  <div className="text-xs" style={{ color: C.exp }}>{fmt(m.us.damage)}</div>
-                </div>
-                <div className="text-center px-2">
-                  {m.ko === "us" && <span className="text-xs font-bold" style={{ color: C.exp }}>KO ⚔</span>}
-                  {m.ko === "enemy" && <span className="text-xs font-bold" style={{ color: C.hp }}>⚔ KO</span>}
-                  {!m.ko && <span className="text-xs" style={{ color: C.dim }}>vs</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{m.enemy.name}</div>
-                  <div className="text-xs" style={{ color: C.hp }}>{fmt(m.enemy.damage)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function CreativeBoard({ rows, meId }) {
-  return (
-    <Panel>
-      <SectionTitle right={<span className="text-xs" style={{ color: C.dim }}>Winning / High-CTR</span>}>
-        CREATIVE RANKING
-      </SectionTitle>
-      {rows.length === 0 ? (
-        <div className="text-sm text-center py-4" style={{ color: C.dim }}>No winning creatives yet.</div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {rows.map((p, i) => {
-            const isMe = p.playerId === meId;
-            return (
-              <div
-                key={p.playerId}
-                className="rounded-xl px-3 py-2 flex items-center gap-3"
-                style={{ background: C.panelSoft, border: `1px solid ${isMe ? C.exp + "AA" : i === 0 ? C.purple + "77" : C.line}` }}
-              >
-                <div
-                  className="w-6 text-center font-bold"
-                  style={{ fontSize: i < 3 ? 18 : 14, color: i === 0 ? C.purple : i < 3 ? C.text : C.dim, fontFamily: "'Chakra Petch', sans-serif" }}
-                >
-                  {medal(i)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm truncate">{p.name}</span>
-                    {isMe && <YouChip />}
-                  </div>
-                  <div className="text-xs" style={{ color: C.dim }}>{p.role}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold" style={{ color: C.purple, fontFamily: "'Chakra Petch', sans-serif" }}>
-                    🎯 {p.winningCount}
-                  </div>
-                  <div className="text-xs" style={{ color: C.dim }}>CTR ×{p.highCtrCount}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function YouChip() {
-  return (
-    <span
-      className="text-xs font-bold rounded-full px-2 py-0.5"
-      style={{ color: C.exp, background: `${C.exp}22`, border: `1px solid ${C.exp}66`, fontFamily: "'Chakra Petch', sans-serif", letterSpacing: "0.06em" }}
-    >
-      YOU
+    <span style={{ fontSize: small ? 9 : 11, fontWeight: 800, letterSpacing: "0.08em", color: col,
+      background: `${col}1C`, border: `1px solid ${col}66`, clipPath: CLIP_SM, padding: small ? "2px 8px" : "3px 11px",
+      fontFamily: "'Chakra Petch',sans-serif", whiteSpace: "nowrap", textShadow: `0 0 8px ${col}88` }}>
+      {rank.toUpperCase()}
     </span>
   );
 }
-
-function KillFeed({ feed, meId }) {
+function Avatar({ p, size = 46 }) {
+  const cls = heroClassOf(p);
+  const col = CLASS_COLOR[cls] || C.gold;
+  const ring = RANKS[p.rank] || C.dim;
+  const img = HERO_IMG[cls];
   return (
-    <Panel>
-      <SectionTitle right={<span className="text-xs" style={{ color: C.green }}>● LIVE</span>}>
-        TODAY'S ACHIEVEMENTS
-      </SectionTitle>
-      {feed.length === 0 ? (
-        <div className="text-sm text-center py-4" style={{ color: C.dim }}>No achievements yet today. Go get First Blood! ⚔️</div>
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <div style={{ position: "absolute", inset: -2, background: `conic-gradient(from 200deg, ${ring}, ${ring}00 40%, ${ring} 65%, ${ring})`, clipPath: HEX }} />
+      <div style={{ position: "absolute", inset: 1, background: `radial-gradient(circle at 50% 30%, ${col}30 0%, #060A1E 75%)`, clipPath: HEX, overflow: "hidden" }}>
+        {img
+          ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />
+          : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: size * 0.42 }}>🦸</div>}
+      </div>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", boxShadow: `0 0 16px ${ring}66`, clipPath: HEX }} />
+    </div>
+  );
+}
+
+// ── Crystal War (glowing, two bases with towers) ─────────────
+function BaseLane({ title, attackerLabel, destroyed, total, col }) {
+  const names = ["TOWER I", "TOWER II", "CRYSTAL"];
+  const icons = ["🗼", "🗼", "💎"];
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 800, marginBottom: 5 }}>
+        <span style={{ color: col, fontFamily: "'Chakra Petch',sans-serif", letterSpacing: "0.08em" }}>{title}</span>
+        <span style={{ color: C.dimmer }}>{attackerLabel}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr", gap: 6 }}>
+        {[0, 1, 2].map((i) => {
+          const isCrystal = i === 2;
+          const down = i < destroyed;
+          const active = !down && i === destroyed;
+          return (
+            <div key={i} style={{
+              clipPath: CLIP_SM, padding: "8px 6px 9px", textAlign: "center",
+              background: down ? "#0A0D22" : active ? `${col}12` : C.panelSoft,
+              border: `1px solid ${down ? C.line : active ? col + "66" : C.line}`, opacity: down ? 0.55 : 1 }}>
+              <div className={isCrystal && !down ? "crystalPulse" : ""} style={{ fontSize: isCrystal ? 24 : 18,
+                filter: down ? "grayscale(1)" : active || isCrystal ? `drop-shadow(0 0 10px ${col})` : "none" }}>
+                {down ? "💥" : icons[i]}
+              </div>
+              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: down ? C.dimmer : col,
+                fontFamily: "'Chakra Petch',sans-serif", textDecoration: down ? "line-through" : "none", marginTop: 3 }}>
+                {down ? "DESTROYED" : names[i]}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CrystalWar({ cw }) {
+  const total = cw.towersPerSide || 3;
+  const weWonOfEnemy = cw.ourTowers || 0;   // enemy towers WE destroyed
+  const enemyWonOfUs = cw.enemyTowers || 0; // our towers THEY destroyed
+  const leading = cw.liveLeader === "us";
+  const even = cw.liveLeader === "even";
+  return (
+    <Frame glow={C.cyan} pad={0}>
+      <div style={{ padding: "16px 14px 12px",
+        background: `radial-gradient(ellipse 70% 90% at 12% 30%, ${C.cyan}12 0%, transparent 55%),
+                     radial-gradient(ellipse 70% 90% at 88% 30%, ${C.enemy}10 0%, transparent 55%)` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 14 }}>
+          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, color: C.cyan }}>WE PROJECT</span>
+          <div style={{ width: 38, height: 38, flexShrink: 0, transform: "rotate(45deg)", background: GOLD_GRAD, padding: 1.5, boxShadow: `0 0 24px ${C.gold}88` }}>
+            <div style={{ width: "100%", height: "100%", background: "#0A0F28", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 13, color: C.goldHi, textShadow: `0 0 12px ${C.gold}` }}>VS</span>
+            </div>
+          </div>
+          <span style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, color: "#FF7777" }}>WELLOUS</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <BaseLane title="⚔ ENEMY BASE" attackerLabel="WE ATTACK →" destroyed={weWonOfEnemy} total={total} col={C.enemy} />
+          <BaseLane title="🛡 OUR BASE" attackerLabel="← WELLOUS ATTACKS" destroyed={enemyWonOfUs} total={total} col={C.cyan} />
+        </div>
+
+        {/* This week net lead */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, marginBottom: 4 }}>
+            <span style={{ color: C.cyan }}>You +{fmt(Math.max(0, cw.liveNet))}</span>
+            <span style={{ color: C.dim }}>THIS WEEK · NET LEAD</span>
+            <span style={{ color: "#FF7777" }}>Enemy +{fmt(Math.max(0, -cw.liveNet))}</span>
+          </div>
+          <div style={{ position: "relative", height: 12, background: "#02040D", border: `1px solid ${C.line}`, borderRadius: 6, overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 2, background: C.line }} />
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: `${Math.max(2, Math.min(98, 50 + (cw.liveNet / 20000) * 45))}% `,
+              width: 10, marginLeft: -5, background: leading ? C.cyan : even ? C.dim : C.enemy,
+              boxShadow: `0 0 10px ${leading ? C.cyan : C.enemy}`, transition: "left 1s ease" }} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", fontFamily: "'Chakra Petch',sans-serif",
+            color: leading ? C.cyan : even ? C.dim : "#FF7777", textShadow: `0 0 10px ${leading ? C.cyan : C.enemy}` }}>
+            {even ? "— EVEN —" : leading ? "▲ LEADING" : "▼ BEHIND"}
+          </span>
+        </div>
+      </div>
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: "7px 14px", background: "#070C24", textAlign: "center", fontSize: 9.5, color: C.dim }}>
+        ⚡ <b style={{ color: C.goldHi }}>ONE FIGHT, TWO FRONTS</b> — every RM1 of revenue pushes the enemy base
+      </div>
+    </Frame>
+  );
+}
+
+// ── Neutral objectives (Power Creep / Lord) ──────────────────
+function NeutralObjectives({ buffs }) {
+  const power = buffs?.powerCreep || { status: "alive" };
+  const lord = buffs?.lord || { status: "alive" };
+  const box = (glow, icon, title, status, body) => (
+    <Frame glow={glow} pad={12}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ fontSize: 26, filter: `drop-shadow(0 0 10px ${glow})` }}>{icon}</div>
+        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", padding: "2px 6px", clipPath: CLIP_SM,
+          fontFamily: "'Chakra Petch',sans-serif", background: status === "slain" ? `${C.green}20` : `${glow}20`,
+          color: status === "slain" ? C.green : glow, border: `1px solid ${(status === "slain" ? C.green : glow)}55` }}>
+          {status === "slain" ? "SLAIN" : "ALIVE"}
+        </span>
+      </div>
+      {body}
+    </Frame>
+  );
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 2px 8px" }}>
+        <span style={{ color: C.gold, fontSize: 10, fontWeight: 800, letterSpacing: "0.25em", fontFamily: "'Chakra Petch',sans-serif" }}>◆ NEUTRAL OBJECTIVES</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {box(C.purple, "🔮", "POWER CREEP", power.status, (
+          <>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 11, letterSpacing: "0.1em", color: C.purple, margin: "4px 0 2px" }}>POWER CREEP</div>
+            <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>
+              First hero to a <b style={{ color: C.gold }}>DOUBLE KILL</b> (10 sales) claims it → <b style={{ color: C.green }}>team EXP ×1.2 today</b>
+            </div>
+            {power.status === "slain" && power.slainBy && <div style={{ fontSize: 10, color: C.green, fontWeight: 800, marginTop: 6 }}>SLAIN BY {power.slainBy}</div>}
+          </>
+        ))}
+        {box(C.hp, "💀", "LORD", lord.status, (
+          <>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 11, letterSpacing: "0.1em", color: C.hp, margin: "4px 0 2px" }}>LORD</div>
+            <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.5 }}>
+              Break the season's best single-day revenue → <b style={{ color: C.gold }}>base DMG ×2</b> tomorrow
+            </div>
+          </>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Attack ranking (who hits the enemy hardest) ──────────────
+function AttackRanking({ rows, meId }) {
+  const sorted = (rows || []).filter((p) => p.damage > 0);
+  const max = sorted.length ? sorted[0].damage : 1;
+  const myIdx = sorted.findIndex((p) => p.playerId === meId);
+  return (
+    <Frame pad={14}>
+      <Eyebrow right="THIS SEASON">⚔ ATTACK RANKING</Eyebrow>
+      <div style={{ fontSize: 10, textAlign: "center", marginBottom: 8, fontFamily: "'Chakra Petch',sans-serif",
+        color: myIdx >= 0 ? C.cyan : C.dimmer }}>
+        {myIdx >= 0 ? `YOU'RE #${myIdx + 1} · ${fmt(sorted[myIdx].damage)} DMG ON THE ENEMY` : "Land a sale to strike the enemy base"}
+      </div>
+      {sorted.length === 0 ? (
+        <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "10px 0" }}>No damage dealt yet.</div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {feed.map((f, i) => {
-            const isMe = f.playerId === meId;
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {sorted.map((p, i) => {
+            const isMe = p.playerId === meId;
+            const topCol = i === 0 ? C.gold : i < 3 ? C.text : C.dim;
             return (
-              <div
-                key={i}
-                className="feed-item flex items-center gap-3 rounded-xl px-3 py-2"
-                style={{ background: isMe ? `${C.exp}12` : C.panelSoft, border: `1px solid ${isMe ? C.exp + "66" : C.line}`, animationDelay: `${i * 0.08}s` }}
-              >
-                <div className="text-xl">{f.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold" style={{ color: C.gold, letterSpacing: "0.12em", fontFamily: "'Chakra Petch', sans-serif" }}>
-                    {f.tag}
+              <div key={p.playerId} style={{ position: "relative", clipPath: CLIP_SM, overflow: "hidden",
+                background: C.panelSoft, border: `1px solid ${isMe ? C.cyan + "AA" : i === 0 ? C.gold + "55" : C.line}`, padding: "7px 10px" }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(p.damage / max) * 100}%`,
+                  background: isMe ? `${C.cyan}12` : i === 0 ? `${C.gold}12` : `${C.cyan}08` }} />
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 22, textAlign: "center", fontSize: i < 3 ? 16 : 13, fontWeight: 800, color: topCol, fontFamily: "'Chakra Petch',sans-serif" }}>
+                    {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
                   </div>
-                  <div className="text-sm truncate">
-                    <span className="font-semibold">{f.name}</span>
-                    <span style={{ color: C.dim }}> · {f.description}</span>
+                  <Avatar p={p} size={40} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</span>
+                      {isMe && <span style={{ fontSize: 8, fontWeight: 800, color: C.cyan, background: `${C.cyan}22`, border: `1px solid ${C.cyan}66`, borderRadius: 3, padding: "1px 5px", fontFamily: "'Chakra Petch',sans-serif" }}>YOU</span>}
+                      <RankChip rank={p.rank} small />
+                    </div>
+                    <div style={{ fontSize: 9, color: C.dim }}>{p.role} · Lv{p.level}</div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold" style={{ color: C.exp }}>+{f.exp}</div>
-                  <div className="text-xs" style={{ color: C.dim }}>{f.timestamp ? f.timestamp.split(" ")[1] || "" : ""}</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch',sans-serif" }}>{fmt(p.damage)}</div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-    </Panel>
+    </Frame>
+  );
+}
+
+function CreativeBoard({ rows }) {
+  const list = rows || [];
+  if (list.length === 0) return null;
+  return (
+    <Frame pad={14}>
+      <Eyebrow right="WINNING / HIGH-CTR">🎯 CREATIVE RANKING</Eyebrow>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {list.map((p, i) => (
+          <div key={p.playerId} style={{ clipPath: CLIP_SM, background: C.panelSoft, border: `1px solid ${i === 0 ? C.purple + "77" : C.line}`, padding: "7px 10px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 22, textAlign: "center", fontSize: i < 3 ? 16 : 13, fontWeight: 800, color: i === 0 ? C.purple : C.text, fontFamily: "'Chakra Petch',sans-serif" }}>
+              {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+            </div>
+            <Avatar p={p} size={40} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 13 }}>{p.name}</div>
+              <div style={{ fontSize: 9, color: C.dim }}>{p.role}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: C.purple, fontFamily: "'Chakra Petch',sans-serif" }}>🎯 {p.winningCount}</div>
+              <div style={{ fontSize: 9, color: C.dim }}>CTR ×{p.highCtrCount}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Frame>
+  );
+}
+
+function KillFeed({ feed }) {
+  const rows = feed || [];
+  return (
+    <Frame pad={14}>
+      <Eyebrow right={<span style={{ color: C.green }}>● LIVE</span>}>TODAY'S ACHIEVEMENTS</Eyebrow>
+      {rows.length === 0 ? (
+        <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "10px 0" }}>No achievements yet today. Go get First Blood! ⚔️</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {rows.map((f, i) => (
+            <div key={i} className="feedItem" style={{ display: "flex", alignItems: "center", gap: 10, clipPath: CLIP_SM, background: C.panelSoft, border: `1px solid ${C.line}`, padding: "7px 10px", animationDelay: `${i * 0.07}s` }}>
+              <div style={{ fontSize: 18 }}>{f.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>{f.tag}</div>
+                <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <b>{f.name}</b> <span style={{ color: C.dim }}>· {f.description}</span>
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {f.exp > 0 && <div style={{ fontSize: 12, fontWeight: 800, color: C.cyan }}>+{f.exp}</div>}
+                <div style={{ fontSize: 9, color: C.dim }}>{f.timestamp ? (f.timestamp.split(" ")[1] || "") : ""}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Frame>
   );
 }
 
 export default function Battlefield({ state, meId }) {
   return (
-    <>
-      <CrystalWarCard cw={state.crystalWar} buffs={state.buffs} />
-      <LaneMatchups rows={state.laneMatchups || []} meId={meId} />
-      <CreativeBoard rows={state.creativeRanking || []} meId={meId} />
-      <KillFeed feed={state.feed || []} meId={meId} />
-    </>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <style>{`
+        @keyframes crystalPulse { 0%,100%{ transform:scale(1); filter:drop-shadow(0 0 8px currentColor);} 50%{ transform:scale(1.12); filter:drop-shadow(0 0 18px currentColor);} }
+        .crystalPulse { animation: crystalPulse 1.6s ease-in-out infinite; }
+        @keyframes feedIn { from{opacity:0; transform:translateX(16px);} to{opacity:1; transform:none;} }
+        .feedItem { animation: feedIn .5s ease both; }
+        @media (prefers-reduced-motion: reduce){ .crystalPulse,.feedItem{ animation:none!important; } }
+      `}</style>
+      <CrystalWar cw={state.crystalWar || {}} />
+      <NeutralObjectives buffs={state.buffs} />
+      <AttackRanking rows={state.damageRanking} meId={meId} />
+      <CreativeBoard rows={state.creativeRanking} />
+      <KillFeed feed={state.feed} />
+    </div>
   );
 }

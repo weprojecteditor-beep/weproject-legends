@@ -113,11 +113,11 @@ function getState(team) {
   var expApproved = getRows('EXP_Log').filter(isApproved);
 
   var cw = getCrystalWarState(cfg, players, expApproved, team);
-  var laneNeutral = computeLaneMatchupsNeutral(players, expApproved, cfg);
+  var levelTh = buildLevelThresholds(cfg);
 
   return {
     crystalWar: cw.forTeam,
-    laneMatchups: laneMatchupsForTeam(laneNeutral, team),
+    damageRanking: getDamageRanking(players, expApproved, cfg, levelTh, team),
     creativeRanking: getCreativeRanking(players, expApproved, team),
     buffs: getBuffsState(players, expApproved, cfg),
     feed: getTeamFeed(players, team),
@@ -275,6 +275,29 @@ function laneMatchupsForTeam(neutralList, team) {
 /* Creative ranking, feeds, faction summary                            */
 /* ================================================================== */
 
+/** This team's players ranked by season revenue (amount_rm) — the "attack" board. */
+function getDamageRanking(players, expApproved, cfg, levelTh, team) {
+  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
+  var dmg = {}, seasonExp = {}, allExp = {};
+  expApproved.forEach(function (r) {
+    var d = dateStr(r.date);
+    dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm);
+    allExp[r.player_id] = (allExp[r.player_id] || 0) + num(r.exp);
+    if (d >= seasonStart && d <= seasonEnd) seasonExp[r.player_id] = (seasonExp[r.player_id] || 0) + num(r.exp);
+  });
+  return players.filter(function (p) { return p.active && p.team === team; })
+    .map(function (p) {
+      return {
+        playerId: p.player_id, name: p.name, role: p.role,
+        heroClass: p.hero_class || '',
+        rank: rankInfo(seasonExp[p.player_id] || 0, cfg).rank,
+        level: levelFromExp(allExp[p.player_id] || 0, levelTh).level,
+        damage: dmg[p.player_id] || 0
+      };
+    })
+    .sort(function (a, b) { return b.damage - a.damage; });
+}
+
 function getCreativeRanking(players, expApproved, team) {
   var byPlayer = {};
   expApproved.forEach(function (r) {
@@ -285,10 +308,13 @@ function getCreativeRanking(players, expApproved, team) {
     if (item.indexOf('winning') !== -1) byPlayer[r.player_id].winning += 1;
     if (item.indexOf('high ctr') !== -1 || item.indexOf('high-ctr') !== -1) byPlayer[r.player_id].highCtr += 1;
   });
-  return players.filter(function (p) { return p.team === team && byPlayer[p.player_id]; })
+  return players.filter(function (p) {
+      var a = byPlayer[p.player_id];
+      return p.team === team && a && (a.winning > 0 || a.highCtr > 0); // only real winners
+    })
     .map(function (p) {
       var a = byPlayer[p.player_id];
-      return { playerId: p.player_id, name: p.name, role: p.role, winningCount: a.winning, highCtrCount: a.highCtr };
+      return { playerId: p.player_id, name: p.name, role: p.role, heroClass: p.hero_class || '', winningCount: a.winning, highCtrCount: a.highCtr };
     })
     .sort(function (a, b) { return (b.winningCount - a.winningCount) || (b.highCtrCount - a.highCtrCount); });
 }
