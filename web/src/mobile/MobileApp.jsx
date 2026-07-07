@@ -94,7 +94,7 @@ function Shell({ auth, onLogout }) {
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", color: C.text, fontFamily: "'Inter', sans-serif", position: "relative",
-      background: `radial-gradient(ellipse 120% 60% at 50% -10%, #14204E 0%, ${C.bg} 55%), ${C.bg}` }}>
+      background: `radial-gradient(ellipse 70% 45% at 12% 0%, ${C.cyan}16 0%, transparent 55%), radial-gradient(ellipse 70% 45% at 88% 0%, ${C.enemy}14 0%, transparent 55%), radial-gradient(ellipse 120% 60% at 50% -10%, #14204E 0%, ${C.bg} 55%), ${C.bg}` }}>
       {/* faint hex-grid texture */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05,
         backgroundImage: `repeating-linear-gradient(60deg, ${C.cyan} 0 1px, transparent 1px 46px), repeating-linear-gradient(-60deg, ${C.cyan} 0 1px, transparent 1px 46px)` }} />
@@ -124,7 +124,8 @@ function Shell({ auth, onLogout }) {
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 800, clipPath: CLIP_SM, fontFamily: "'Chakra Petch',sans-serif",
-                  background: on ? GOLD_GRAD : C.panel, color: on ? "#0A0D1C" : C.dim, border: on ? "none" : `1px solid ${C.line}` }}>
+                  background: on ? GOLD_GRAD : C.panel, color: on ? "#0A0D1C" : C.dim, border: on ? "none" : `1px solid ${C.line}`,
+                  boxShadow: on ? `0 0 16px ${C.gold}66` : "none", transition: "all .2s" }}>
                 {t.label}
               </button>
             );

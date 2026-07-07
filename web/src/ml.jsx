@@ -41,9 +41,10 @@ export const classOf = (heroClass, role) => CLASSES[heroClassOf(heroClass, role)
 
 export function Frame({ children, glow, pad = 14, style }) {
   return (
-    <div style={{ background: GOLD_GRAD, clipPath: CLIP, padding: 1.5,
-      filter: glow ? `drop-shadow(0 0 14px ${glow}55)` : "drop-shadow(0 4px 12px rgba(0,0,0,0.5))", ...style }}>
+    <div style={{ background: GOLD_GRAD, backgroundSize: "220% 100%", animation: "goldShift 7s ease-in-out infinite",
+      clipPath: CLIP, padding: 1.5, filter: glow ? `drop-shadow(0 0 18px ${glow}77)` : "drop-shadow(0 4px 12px rgba(0,0,0,0.5))", ...style }}>
       <div style={{ background: `linear-gradient(160deg, ${C.panel} 0%, #0D1538 100%)`, clipPath: CLIP, padding: pad, position: "relative", overflow: "hidden" }}>
+        {glow && <div style={{ position: "absolute", top: -40, left: -40, width: 120, height: 120, borderRadius: "50%", background: `radial-gradient(circle, ${glow}22, transparent 70%)`, pointerEvents: "none" }} />}
         {children}
       </div>
     </div>
@@ -117,12 +118,33 @@ export function WarBar({ pct, grad, glowCol, label, right, h = 20 }) {
   );
 }
 
+// Map a badge label → a distinct icon + colour tier (so badges aren't all identical).
+export function badgeMeta(label) {
+  const s = String(label || "").toLowerCase();
+  if (s.includes("winning")) return { icon: "🎯", tier: "purple" };
+  if (s.includes("high ctr") || s.includes("high-ctr")) return { icon: "📈", tier: "cyan" };
+  if (s.includes("double kill")) return { icon: "⚔️", tier: "purple" };
+  if (s.includes("first blood") || s.includes("first order")) return { icon: "🩸", tier: "red" };
+  if (s.includes("mvp")) return { icon: "👑", tier: "gold" };
+  if (s.includes("savage")) return { icon: "💀", tier: "red" };
+  if (s.includes("maniac")) return { icon: "🔥", tier: "red" };
+  if (s.includes("assist")) return { icon: "🤝", tier: "green" };
+  if (s.includes("milestone")) return { icon: "💎", tier: "cyan" };
+  if (s.includes("streak") || s.includes("roas")) return { icon: "🔥", tier: "gold" };
+  if (s.includes("tower")) return { icon: "🗼", tier: "cyan" };
+  if (s.includes("lord")) return { icon: "🐉", tier: "red" };
+  return { icon: "🏅", tier: "gold" };
+}
+
 // Hexagon badge (ref).
 export function Badge({ icon, label, tier }) {
   const cols = {
     gold: { a: "#FFE79A", b: "#8A6510", glow: C.gold },
     purple: { a: "#D0A8FF", b: "#4A1F8C", glow: C.purple },
     cyan: { a: "#9FF3FF", b: "#0E5C6C", glow: C.cyan },
+    red: { a: "#FF9FB0", b: "#7A0E28", glow: C.hp },
+    green: { a: "#A8FFC6", b: "#0E5C31", glow: C.green },
+    orange: { a: "#FFD5A8", b: "#7A3E0E", glow: C.orange },
   }[tier] || { a: "#FFE79A", b: "#8A6510", glow: C.gold };
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: 72 }}>

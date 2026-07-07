@@ -90,4 +90,6 @@ input {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 18px #F5C54255; } 50% { box-shadow: 0 0 34px #F5C542AA; } }
 @keyframes spinSlow { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes goldShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .shine, .lordBob, .crystalL, .crystalR { animation: none; } }

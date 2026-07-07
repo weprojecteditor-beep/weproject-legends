@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
+import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
 const SKIN_TIERS = [
   { tier: "GENERAL", unlock: 1, col: "#8C96C4" },
@@ -179,7 +179,7 @@ export default function Hero({ player, onMission }) {
           <div style={{ fontSize: 12, color: C.dim }}>No badges yet — earn milestones & achievements to collect them.</div>
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-            {player.badges.map((b, i) => <Badge key={i} icon="🏅" label={b} tier="gold" />)}
+            {player.badges.map((b, i) => { const m = badgeMeta(b); return <Badge key={i} icon={m.icon} label={b} tier={m.tier} />; })}
           </div>
         )}
       </Frame>
