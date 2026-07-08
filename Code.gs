@@ -1041,7 +1041,7 @@ function simplifySheet() {
     ['Players',           '#9AA0A6'],
     ['Guide',             '#34A853']
   ];
-  var hidden = ['Shop', 'Actions', 'Missions', 'Config', 'Crystal_War', 'Buffs', 'Presets'];
+  var hidden = ['Shop', 'Actions', 'Missions', 'Config', 'Crystal_War', 'Buffs', 'Presets', 'Steals', 'Boss_ARCHIVED'];
 
   var pos = 1;
   visible.forEach(function (v) {
@@ -1094,8 +1094,11 @@ function buildHomeTab(ss) {
     { t: 'kv', a: 'Players', b: 'Everyone on both teams + their 4-digit PINs.' },
     { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how Crystal War works.' },
     { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '🤖 AUTOMATIC — NO ACTION NEEDED', b: '' },
+    { t: 'step', a: 'Crystal War, Neutral Objectives (the revenue race), and Coin Snatcher raids all run by themselves from the sales you approve in EXP_Log. Never hand-edit the Crystal_War / Buffs / Steals tabs.', b: '' },
+    { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '⚙️ SETUP TABS ARE HIDDEN', b: '' },
-    { t: 'step', a: 'Shop / Actions / Missions / Config / Crystal_War / Buffs / Presets are hidden to keep things clean. To show them: click the ☰ "All Sheets" icon at the bottom-left, or View → Hidden sheets. Touch them only to change prices, point values, or the season.', b: '' },
+    { t: 'step', a: 'Shop / Actions / Missions / Config / Presets are hidden to keep things clean. To change prices, point values, missions, or the season, show them via the ☰ "All Sheets" icon (bottom-left) or View → Hidden sheets.', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '✅ GOLDEN RULES', b: '' },
     { t: 'step', a: '• Nothing counts until you tick "approved".', b: '' },
