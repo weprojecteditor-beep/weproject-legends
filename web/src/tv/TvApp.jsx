@@ -118,32 +118,54 @@ function CrystalScreen({ cw }) {
 }
 
 function FactionScreen({ label, col, f }) {
-  const top3 = (f && f.top3Damage) || [];
+  const top = (f && f.top3Damage) || [];
   const feed = (f && f.feed) || [];
+  const mvp = top[0];
+  const rest = top.slice(1, 3);
+  const mvpImg = mvp && imgFor(mvp.heroClass, mvp.role);
   return (
-    <div style={{ display: "flex", gap: "3vw", height: "100%" }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.4vw", color: col, textShadow: `0 0 18px ${col}88`, marginBottom: "2vh" }}>💎 {label} · TOP DAMAGE</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.6vh" }}>
-          {top3.length === 0 && <div style={{ color: C.dim, fontSize: "1.4vw" }}>No damage yet.</div>}
-          {top3.map((p, i) => (
-            <div key={p.playerId} style={{ display: "flex", alignItems: "center", gap: "1.4vw", clipPath: CLIP_SM, background: `${col}10`, border: `2px solid ${i === 0 ? col + "88" : C.line}`, padding: "1.4vh 1.4vw" }}>
-              <div style={{ fontSize: "2.2vw", fontWeight: 800, color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch',sans-serif", width: "3vw", textAlign: "center" }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</div>
+    <div style={{ display: "flex", gap: "2.5vw", height: "100%" }}>
+      {/* MVP big hero spotlight + runners-up */}
+      <div style={{ flex: 1.25, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "2.2vw", color: col, textShadow: `0 0 18px ${col}88`, marginBottom: "1.4vh" }}>💎 {label} · TOP ATTACKER</div>
+        {mvp ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "2vw", clipPath: CLIP_SM, background: `linear-gradient(120deg, ${col}1E 0%, transparent 70%)`, border: `2px solid ${col}88`, padding: "2vh 2vw", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", left: "-3vw", top: "-8vh", width: "26vw", height: "26vw", borderRadius: "50%", background: `radial-gradient(circle, ${col}38, transparent 68%)`, pointerEvents: "none" }} />
+            <div className="cpz" style={{ position: "relative", width: "20vh", height: "32vh", flexShrink: 0 }}>
+              {mvpImg
+                ? <img src={mvpImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: `drop-shadow(0 0 3.5vh ${col})` }} />
+                : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: "14vh" }}>🦸</div>}
+            </div>
+            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "1.4vw", color: C.gold, fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800 }}>🥇 MVP</div>
+              <div style={{ fontSize: "4.6vw", fontWeight: 900, fontFamily: "'Chakra Petch',sans-serif", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{mvp.name}</div>
+              <div style={{ fontSize: "1.2vw", color: C.dim, margin: "0.6vh 0 1.4vh" }}>{mvp.role}</div>
+              <div style={{ fontSize: "4vw", fontWeight: 900, color: C.gold, fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 24px ${C.gold}`, lineHeight: 1 }}>{fmt(mvp.damage)}</div>
+              <div style={{ fontSize: "1vw", color: C.dimmer, letterSpacing: "0.15em" }}>DAMAGE ON THE ENEMY</div>
+            </div>
+          </div>
+        ) : <div style={{ color: C.dim, fontSize: "1.6vw" }}>No damage yet.</div>}
+
+        <div style={{ display: "flex", gap: "1.5vw", marginTop: "2vh" }}>
+          {rest.map((p, i) => (
+            <div key={p.playerId} style={{ flex: 1, display: "flex", alignItems: "center", gap: "1.2vw", clipPath: CLIP_SM, background: C.panelSoft, border: `2px solid ${C.line}`, padding: "1.4vh 1.2vw", minWidth: 0 }}>
+              <div style={{ fontSize: "2vw", fontWeight: 800, color: C.text, fontFamily: "'Chakra Petch',sans-serif" }}>{i === 0 ? "🥈" : "🥉"}</div>
               <HexImg heroClass={p.heroClass} role={p.role} col={col} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: "2vw" }}>{p.name}</div>
-                <div style={{ fontSize: "1vw", color: C.dim }}>{p.role}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "1.5vw", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                <div style={{ fontSize: "1.4vw", color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>{fmt(p.damage)}</div>
               </div>
-              <div style={{ fontWeight: 800, fontSize: "2vw", color: i === 0 ? C.gold : C.text, fontFamily: "'Chakra Petch',sans-serif" }}>{fmt(p.damage)}</div>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ flex: 1 }}>
+
+      {/* Today's feed */}
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: "1.8vw", color: C.gold, marginBottom: "2vh" }}>TODAY'S ACHIEVEMENTS</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.2vh" }}>
           {feed.length === 0 && <div style={{ color: C.dim, fontSize: "1.4vw" }}>Nothing yet today.</div>}
-          {feed.slice(0, 6).map((fi, i) => (
+          {feed.slice(0, 5).map((fi, i) => (
             <div key={i} className="fin" style={{ display: "flex", alignItems: "center", gap: "1.2vw", clipPath: CLIP_SM, background: C.panelSoft, border: `2px solid ${C.line}`, padding: "1.2vh 1.2vw", animationDelay: `${i * 0.08}s` }}>
               <div style={{ fontSize: "2.2vw" }}>{fi.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
