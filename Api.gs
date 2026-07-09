@@ -177,7 +177,7 @@ function segRemain(dealt, segs) {
 /**
  * The 3 stages of the monthly gauntlet: [Tower I, Tower II, Crystal].
  * Uses explicit Config base_tower1_hp/base_tower2_hp/base_crystal_hp if all set,
- * otherwise splits boss_target 30% / 30% / 40%.
+ * otherwise splits boss_target 30% / 40% / 30% (Tower II biggest).
  */
 function bossSegments(cfg, target) {
   var t1 = cfgInt(cfg.base_tower1_hp, 0), t2 = cfgInt(cfg.base_tower2_hp, 0), cr = cfgInt(cfg.base_crystal_hp, 0);
