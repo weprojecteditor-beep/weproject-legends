@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C, Frame, Avatar, GOLD_GRAD, CLIP_SM, CLASS_COLOR, fmt } from "../ml.jsx";
-import { HERO_CLASS_BY_ROLE, CLASS_FAMILY_BY_ROLE, TEAM_COLORS, TEAM_LABELS } from "../theme.js";
+import { HERO_CLASS_BY_ROLE, CLASS_FAMILY_BY_ROLE } from "../theme.js";
 import { getRoster, getPlayer, setHeroClass } from "../api.js";
 import { Loading, PinDots, Keypad } from "../ui.jsx";
 
@@ -46,30 +46,17 @@ export default function Login({ onLogin }) {
 
   if (step === "select") {
     return (
-      <Shell title="SELECT YOUR HERO">
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "62vh", overflowY: "auto" }}>
-          {["weproject", "wellous"].map((team) => {
-            const rows = roster.filter((p) => p.team === team);
-            if (!rows.length) return null;
-            return (
-              <div key={team}>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", marginBottom: 6, color: TEAM_COLORS[team], fontFamily: "'Chakra Petch',sans-serif" }}>
-                  💎 {TEAM_LABELS[team]}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {rows.map((p) => (
-                    <button key={p.playerId} onClick={() => pickHero(p)}
-                      style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
-                        background: C.panelSoft, border: `1px solid ${C.line}`, padding: "8px 12px", color: C.text, textAlign: "left" }}>
-                      <Avatar p={p} size={38} />
-                      <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{p.name}</span>
-                      <span style={{ fontSize: 10, color: C.dim }}>{p.role}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      <Shell title="SELECT YOUR HERO" subtitle="WEPROJECT · 16 heroes">
+        <div style={{ display: "flex", flexDirection: "column", gap: 7, maxHeight: "62vh", overflowY: "auto" }}>
+          {roster.map((p) => (
+            <button key={p.playerId} onClick={() => pickHero(p)}
+              style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
+                background: C.panelSoft, border: `1px solid ${C.line}`, padding: "8px 12px", color: C.text, textAlign: "left" }}>
+              <Avatar p={p} size={38} />
+              <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{p.name}</span>
+              <span style={{ fontSize: 10, color: C.dim }}>{p.role}</span>
+            </button>
+          ))}
         </div>
       </Shell>
     );
@@ -129,27 +116,22 @@ function Splash({ onEnter }) {
         marginBottom: 4, animation: "fadeIn .8s ease .1s both" }}>LEAGUE OF LEGENDS</div>
       <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.4em", color: C.dim, fontFamily: "'Chakra Petch',sans-serif", marginBottom: 16, animation: "fadeIn .8s ease .2s both" }}>SEASON 1 · 2026</div>
 
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 8 }}>
-        <div style={{ textAlign: "center", animation: "slamL .6s cubic-bezier(.2,1.4,.4,1) .4s both" }}>
-          <img className="crystalL" src="/avatars/marksman.png" alt="" style={{ height: 108, filter: `drop-shadow(0 0 22px ${C.cyan})` }} />
-          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: C.cyan, letterSpacing: "0.06em", textShadow: `0 0 24px ${C.cyan}` }}>WEPROJECT</div>
-          <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em" }}>16 HEROES</div>
+      {/* The boss looms; our heroes rally below */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8 }}>
+        <div className="floaty" style={{ fontSize: 92, filter: `drop-shadow(0 0 30px ${C.hp})`, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .5s both" }}>🐲</div>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 16, color: C.hp, letterSpacing: "0.06em", textShadow: `0 0 22px ${C.hp}`, animation: "fadeIn .8s ease .7s both" }}>THE REVENUE OVERLORD</div>
+        <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em", marginBottom: 10, animation: "fadeIn .8s ease .8s both" }}>1,000,000 HP</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+          <img className="crystalL" src="/avatars/marksman.png" alt="" style={{ height: 96, filter: `drop-shadow(0 0 22px ${C.cyan})`, animation: "slamL .6s cubic-bezier(.2,1.4,.4,1) .9s both" }} />
+          <img className="crystalR" src="/avatars/fighter.png" alt="" style={{ height: 96, filter: `drop-shadow(0 0 22px ${C.cyan})`, animation: "slamR .6s cubic-bezier(.2,1.4,.4,1) .9s both" }} />
         </div>
-        <div style={{ width: 54, height: 54, flexShrink: 0, transform: "rotate(45deg)", marginBottom: 34, background: GOLD_GRAD, padding: 2, boxShadow: `0 0 40px ${C.gold}`, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .9s both" }}>
-          <div style={{ width: "100%", height: "100%", background: "#0A0F28", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ transform: "rotate(-45deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: C.goldHi, textShadow: `0 0 16px ${C.gold}` }}>VS</span>
-          </div>
-        </div>
-        <div style={{ textAlign: "center", animation: "slamR .6s cubic-bezier(.2,1.4,.4,1) .4s both" }}>
-          <img className="crystalR" src="/avatars/fighter.png" alt="" style={{ height: 108, filter: `drop-shadow(0 0 22px ${C.enemy})` }} />
-          <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: "#FF7777", letterSpacing: "0.06em", textShadow: `0 0 24px ${C.enemy}` }}>WELLOUS</div>
-          <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em" }}>RIVAL TEAM</div>
-        </div>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 18, color: C.cyan, letterSpacing: "0.06em", textShadow: `0 0 24px ${C.cyan}`, marginTop: 4 }}>WEPROJECT</div>
+        <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em" }}>16 HEROES · ONE BOSS</div>
       </div>
 
       <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.3em", margin: "12px 0 6px",
-        background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "fadeIn .8s ease 1.2s both" }}>⚔ THE WAR IS ON ⚔</div>
-      <div style={{ fontSize: 10, color: C.dim, marginBottom: 22, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Crystals at stake · towers will fall</div>
+        background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "fadeIn .8s ease 1.2s both" }}>⚔ SLAY THE BOSS ⚔</div>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 22, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Every RM of revenue is damage · beat it before month-end</div>
       <button onClick={onEnter} style={{ clipPath: CLIP_SM, padding: "14px 44px", border: "none", cursor: "pointer",
         background: GOLD_GRAD, color: "#0A0F28", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 14, letterSpacing: "0.15em",
         animation: "fadeIn .8s ease 1.6s both, glowPulse 2s ease 2s infinite" }}>ENTER THE BATTLEFIELD</button>

@@ -454,7 +454,11 @@ function configDefaultRows() {
     ['season_start', monthStartStr()],
     ['season_end',   monthEndStr()],
 
-    // Crystal War
+    // World Boss (monthly) — team beats it by dealing `boss_target` in approved revenue
+    ['boss_name',   'Revenue Overlord'],
+    ['boss_target', 1000000],
+
+    // Crystal War (legacy — unused in the World Boss model, kept for reference)
     ['towers_per_side', 3],
     ['week_reset_day',  'monday'],
     ['lock_time',        '23:59'],

@@ -95,8 +95,6 @@ function doPost(e) {
     if (action === 'redeem')        return json(redeem(body.playerId, body.pin, body.itemId));
     if (action === 'submitMission') return json(submitMission(body.playerId, body.pin, body.missionId));
     if (action === 'setHeroClass')  return json(setHeroClass(body.playerId, body.pin, body.heroClass, body.gender));
-    if (action === 'steal')         return json(steal(body.playerId, body.pin, body.targetId));
-    if (action === 'lockWeek')      return json(lockWeek(body.adminPin, body.weekNo));
     return json({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
     return json({ ok: false, error: String(err && err.message || err) });
@@ -108,52 +106,77 @@ function doPost(e) {
 /* ================================================================== */
 
 function getState(team) {
-  team = normalizeTeam(team);
   var cfg = getConfig();
   var players = getPlayers();
   var expApproved = getRows('EXP_Log').filter(isApproved);
-
-  var cw = getCrystalWarState(cfg, players, expApproved, team);
   var levelTh = buildLevelThresholds(cfg);
 
   return {
-    crystalWar: cw.forTeam,
-    damageRanking: getDamageRanking(players, expApproved, cfg, levelTh, team),
-    creativeRanking: getCreativeRanking(players, expApproved, team),
-    buffs: getBuffsState(players, expApproved, cfg),
-    feed: getTeamFeed(players, team),
-    actionsTable: getActionsTable(team),
-    missionsConfig: getMissionsConfig(team),
+    boss: getBossState(cfg, players, expApproved),
+    damageRanking: getDamageRanking(players, expApproved, cfg, levelTh, 'weproject'),
+    creativeRanking: getCreativeRanking(players, expApproved, 'weproject'),
+    feed: getTeamFeed(players, 'weproject'),
+    actionsTable: getActionsTable('weproject'),
+    missionsConfig: getMissionsConfig('weproject'),
     updatedAt: dateTimeStr(new Date())
   };
 }
 
 /* ================================================================== */
-/* Endpoint: tv (neutral, dual-team broadcast)                         */
+/* Endpoint: tv (World Boss broadcast — single team)                   */
 /* ================================================================== */
 
 function getTv() {
   var cfg = getConfig();
   var players = getPlayers();
   var expApproved = getRows('EXP_Log').filter(isApproved);
-
-  var cw = getCrystalWarState(cfg, players, expApproved, 'weproject');
+  var levelTh = buildLevelThresholds(cfg);
 
   return {
-    crystalWar: cw.neutral,
-    factions: {
-      weproject: getFactionSummary(players, expApproved, 'weproject'),
-      wellous:   getFactionSummary(players, expApproved, 'wellous')
-    },
-    mixedFeed: getMixedFeed(players),
-    laneMatchups: computeLaneMatchupsNeutral(players, expApproved, cfg),
+    boss: getBossState(cfg, players, expApproved),
+    topDamage: getDamageRanking(players, expApproved, cfg, levelTh, 'weproject')
+                 .filter(function (p) { return p.damage > 0; }).slice(0, 6),
+    feed: getTeamFeed(players, 'weproject'),
     updatedAt: dateTimeStr(new Date())
   };
 }
 
 /* ================================================================== */
-/* Crystal War (§4.0 — rope is computed live, towers are read/settled) */
+/* World Boss — WeProject vs one monthly boss (target = boss_target)   */
+/* Boss HP drains from `target` down as approved revenue (amount_rm)    */
+/* accumulates this calendar month. Auto-resets on the 1st.            */
 /* ================================================================== */
+
+/** { start, end, label } for the current calendar month (script tz). */
+function monthBoundsNow() {
+  var d = new Date();
+  return {
+    start: Utilities.formatDate(new Date(d.getFullYear(), d.getMonth(), 1), tz(), 'yyyy-MM-dd'),
+    end:   Utilities.formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0), tz(), 'yyyy-MM-dd'),
+    label: Utilities.formatDate(d, tz(), 'MMMM yyyy')
+  };
+}
+
+function getBossState(cfg, players, expApproved) {
+  var mb = monthBoundsNow();
+  var target = cfgInt(cfg.boss_target, 1000000);
+  var dealt = sumTeamRevenueInRange(players, expApproved, 'weproject', mb.start, mb.end);
+  var today = todayStr();
+  var todayDamage = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
+  return {
+    name: String(cfg.boss_name || 'REVENUE OVERLORD'),
+    month: mb.label,
+    target: target,
+    dealt: dealt,
+    hpRemaining: Math.max(0, target - dealt),
+    hpPct: target > 0 ? Math.max(0, (target - dealt) / target) : 0,   // fraction of HP left
+    dealtPct: target > 0 ? Math.min(1, dealt / target) : 0,           // fraction of HP chipped
+    defeated: dealt >= target,
+    todayDamage: todayDamage,
+    seasonStart: mb.start,
+    seasonEnd: mb.end
+  };
+}
 
 function getCrystalWarRow() {
   return getRows('Crystal_War')[0] || {};
@@ -300,10 +323,11 @@ function laneMatchupsForTeam(neutralList, team) {
 /** This team's players ranked by season revenue (amount_rm) — the "attack" board. */
 function getDamageRanking(players, expApproved, cfg, levelTh, team) {
   var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
+  var mb = monthBoundsNow();
   var dmg = {}, seasonExp = {}, allExp = {};
   expApproved.forEach(function (r) {
     var d = dateStr(r.date);
-    dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm);
+    if (d >= mb.start && d <= mb.end) dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm); // damage on this month's boss
     allExp[r.player_id] = (allExp[r.player_id] || 0) + num(r.exp);
     if (d >= seasonStart && d <= seasonEnd) seasonExp[r.player_id] = (seasonExp[r.player_id] || 0) + num(r.exp);
   });
@@ -671,7 +695,7 @@ function findEarliestSeasonThresholdCrosser(players, thresholdExp, seasonStart, 
 
 function getRoster() {
   return getPlayers()
-    .filter(function (p) { return p.active; })
+    .filter(function (p) { return p.active && p.team === 'weproject'; }) // solo World Boss — WeProject only
     .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team }; });
 }
 
@@ -737,48 +761,6 @@ function redeem(playerId, pin, itemId) {
     CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'shop:weproject', 'shop:wellous']);
 
     return { ok: true, message: 'Redeemed! Pending GM approval', goldRemaining: Math.max(0, goldReal) - price };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/* ================================================================== */
-/* POST: steal (Coin Snatcher — cross-team PvP Gold raid)              */
-/* ================================================================== */
-
-function steal(attackerId, pin, targetId) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var players = getPlayers();
-    var a = playerById(players, attackerId);
-    if (!a) return { ok: false, error: 'Player not found' };
-    var pinErr = verifyPin(a, pin);
-    if (pinErr) return { ok: false, error: pinErr.error };
-    var t = playerById(players, targetId);
-    if (!t || !t.active) return { ok: false, error: 'Target not found' };
-    if (t.team === a.team) return { ok: false, error: 'You can only raid the enemy team' };
-
-    var cfg = getConfig();
-    var cost = cfgInt(cfg.steal_weapon_cost, 300);
-    var amount = cfgInt(cfg.steal_amount, 500);
-    var defReward = cfgInt(cfg.steal_defense_reward, 100);
-
-    var today = todayStr();
-    var already = getRows('Steals').some(function (s) { return s.attacker_id === attackerId && dateStr(s.timestamp) === today; });
-    if (already) return { ok: false, error: 'You already raided today — cooldown until tomorrow' };
-
-    if (goldOf(attackerId, cfg) < cost) return { ok: false, error: 'Not enough Gold for the raid (need ' + cost + ')' };
-
-    var success = goldOf(targetId, cfg) >= amount;
-    var stolen = success ? amount : 0;
-    var defense = success ? 0 : defReward;
-
-    ensureStealsSheet().appendRow([new Date(), attackerId, targetId, cost, stolen, success ? 'success' : 'backfire', defense]);
-    CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous']);
-
-    if (success) return { ok: true, result: 'success', message: '😈 Raid success! Stole ' + amount + ' Gold from ' + t.name };
-    return { ok: true, result: 'backfire', message: '🛡 Backfired! ' + t.name + " didn't have enough Gold — you lost " + cost };
   } finally {
     lock.releaseLock();
   }
@@ -1015,13 +997,13 @@ function monthEndStrFromDate(d) {
 
 function normalizeTeam(t) { return (t === 'wellous') ? 'wellous' : 'weproject'; }
 
-/** Gold = earned Gold (EXP × skin multiplier) − redemptions that aren't rejected + raid net. */
+/** Gold = earned Gold (EXP × skin multiplier) − redemptions that aren't rejected. */
 function goldBalanceReal(playerId, earnedGold) {
   var spent = 0;
   getRows('Redemptions').forEach(function (rd) {
     if (rd.player_id === playerId && String(rd.status) !== 'rejected') spent += num(rd.gold_cost);
   });
-  return earnedGold - spent + stealNet(playerId);
+  return earnedGold - spent;
 }
 
 /** Skin bonus: leveling up multiplies the Gold you earn from EXP. */
@@ -1029,36 +1011,6 @@ function goldMultiplier(level) {
   if (level >= 20) return 1.2;   // Legend skin
   if (level >= 10) return 1.1;   // Elite skin
   return 1.0;                    // General
-}
-
-/** Net Gold from PvP raids: attacker (+stolen − weapon cost), target (+defense reward − stolen). */
-function stealNet(playerId) {
-  var net = 0;
-  getRows('Steals').forEach(function (s) {
-    if (s.attacker_id === playerId) net += num(s.stolen_amount) - num(s.weapon_cost);
-    if (s.target_id === playerId) net += num(s.defense_reward) - num(s.stolen_amount);
-  });
-  return net;
-}
-
-/** Full current Gold for any player (EXP × skin multiplier − spending + raid net), clamped ≥0. */
-function goldOf(playerId, cfg) {
-  var levelTh = buildLevelThresholds(cfg);
-  var allExp = 0;
-  getRows('EXP_Log').forEach(function (r) { if (r.player_id === playerId && isApproved(r)) allExp += num(r.exp); });
-  var lvl = levelFromExp(allExp, levelTh).level;
-  return Math.max(0, goldBalanceReal(playerId, Math.round(allExp * goldMultiplier(lvl))));
-}
-
-function ensureStealsSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Steals');
-  if (!sheet) {
-    sheet = ss.insertSheet('Steals');
-    sheet.getRange(1, 1, 1, 7).setValues([['timestamp', 'attacker_id', 'target_id', 'weapon_cost', 'stolen_amount', 'result', 'defense_reward']]);
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
 }
 
 /** Rank from season EXP → { rank, nextRank, expToNextRank }. */

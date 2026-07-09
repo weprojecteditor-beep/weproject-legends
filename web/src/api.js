@@ -40,4 +40,3 @@ export const redeem = (playerId, pin, itemId) => apiPost("redeem", { playerId, p
 export const submitMission = (playerId, pin, missionId) => apiPost("submitMission", { playerId, pin, missionId });
 export const setHeroClass = (playerId, pin, heroClass, gender) =>
   apiPost("setHeroClass", { playerId, pin, heroClass, gender });
-export const steal = (playerId, pin, targetId) => apiPost("steal", { playerId, pin, targetId });
