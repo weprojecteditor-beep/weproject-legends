@@ -163,8 +163,8 @@ function getBossState(cfg, players, expApproved) {
     target: target,
     dealt: dealt,
     hpRemaining: Math.max(0, target - dealt),
-    hpPct: target > 0 ? Math.max(0, (target - dealt) / target) : 0,   // fraction of HP left
-    dealtPct: target > 0 ? Math.min(1, dealt / target) : 0,           // fraction of HP chipped
+    hpPct: target > 0 ? Math.min(1, Math.max(0, (target - dealt) / target)) : 0,   // fraction of HP left (clamped 0..1)
+    dealtPct: target > 0 ? Math.min(1, Math.max(0, dealt / target)) : 0,           // fraction of HP chipped
     defeated: dealt >= target,
     todayDamage: todayDamage,
     seasonStart: mb.start,
