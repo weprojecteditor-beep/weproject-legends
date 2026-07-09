@@ -609,7 +609,7 @@ function buildGuide(ss) {
 
   var blank = ['', '', '', '', ''];
   var content = [
-    { r: ['WEPROJECT LEGENDS — GM / HR DAILY ENTRY GUIDE (V5.1 — Crystal War)', '', '', '', ''], t: 'title' },
+    { r: ['WEPROJECT LEGENDS — GM / HR DAILY ENTRY GUIDE (World Boss)', '', '', '', ''], t: 'title' },
     { r: blank, t: 'note' },
 
     { r: ['WHAT EACH EXP_LOG COLUMN MEANS', '', '', '', ''], t: 'section' },
@@ -618,18 +618,17 @@ function buildGuide(ss) {
     { r: ['player_id', 'P001–P016. See the Players tab for who is who and their team.', '', '', ''], t: 'note' },
     { r: ['category', 'Pick from the dropdown (7 options). See Actions/Missions tabs for the exact EXP each item is worth.', '', '', ''], t: 'note' },
     { r: ['item', 'Free-text description. For Editors, include "Winning" or "High CTR" so it counts on the Creative board.', '', '', ''], t: 'note' },
-    { r: ['exp', 'Points the player earns. Can be NEGATIVE for refunds / corrections. Power Creep ×1.2 and Lord ×2 are already multiplied in by you before typing the number.', '', '', ''], t: 'note' },
-    { r: ['amount_rm', 'ONLY for real revenue (a sale). Drives BOTH the personal Damage ranking (monthly total) AND this week\'s Crystal War rope (weekly, resets Monday) — same number, two different views. Negative = refund, rolls back both.', '', '', ''], t: 'note' },
+    { r: ['exp', 'Points the player earns (this is also their Gold). Can be NEGATIVE for refunds / corrections.', '', '', ''], t: 'note' },
+    { r: ['amount_rm', 'ONLY for real revenue (a sale). This is the damage that hits the World Boss AND fills the personal Damage ranking — same number, two views. Negative = refund, rolls back both.', '', '', ''], t: 'note' },
     { r: ['approved', 'Tick the checkbox to make the row count. Un-ticked rows are ignored by the app.', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
-    { r: ['CRYSTAL WAR — HOW IT WORKS', '', '', '', ''], t: 'section' },
-    { r: ['• Weekly rope: this week\'s (our approved RM) − (their approved RM). Resets to center every Monday. Purely visual, not a stored HP pool.', '', '', '', ''], t: 'note' },
-    { r: ['• Towers: 3 per side, a discrete weekly win counter. Every Sunday 23:59, whichever side\'s rope net is positive that week knocks down 1 enemy tower. A tie knocks down nothing.', '', '', '', ''], t: 'note' },
-    { r: ['• After all 3 enemy towers fall, the NEXT week won = the Crystal shatters = that team wins the season outright.', '', '', '', ''], t: 'note' },
-    { r: ['• A month-end week with fewer than 4 working days does not get its own tower — its net folds into the previous full week.', '', '', '', ''], t: 'note' },
-    { r: ['• Personal Damage ranking = each player\'s approved amount_rm summed for the WHOLE MONTH (never resets weekly) — a separate view from the weekly rope.', '', '', '', ''], t: 'note' },
-    { r: ['• Season win order: shatter the crystal first > else most enemy towers destroyed by month end > else higher total season revenue.', '', '', '', ''], t: 'note' },
+    { r: ['WORLD BOSS — HOW IT WORKS', '', '', '', ''], t: 'section' },
+    { r: ['• One boss per month with 1,000,000 HP (set by boss_target in Config; rename it via boss_name).', '', '', '', ''], t: 'note' },
+    { r: ['• Every RM1 of approved amount_rm = 1 damage. The whole team\'s revenue this month chips the boss HP down.', '', '', '', ''], t: 'note' },
+    { r: ['• Beat the boss = the team deals a combined 1,000,000 before the month ends. That is the monthly team win.', '', '', '', ''], t: 'note' },
+    { r: ['• The boss AND everyone\'s Rank auto-reset on the 1st of each month — you do not need to touch anything.', '', '', '', ''], t: 'note' },
+    { r: ['• Personal Damage ranking = each player\'s approved amount_rm this month = their contribution to the boss.', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
     { r: ['HERO CLASS (locked by role, cosmetic choice within it)', '', '', '', ''], t: 'section' },
@@ -651,9 +650,9 @@ function buildGuide(ss) {
     { r: ['adjust', 'Corrections & refunds (negative exp / amount_rm)', '—', 'no', ''], t: 'note' },
     { r: blank, t: 'note' },
 
-    { r: ['NEUTRAL BUFFS', '', '', '', ''], t: 'section' },
-    { r: ['• Power Creep: refreshes daily. Claimed by whoever hits Double Kill (10 approved purchases) first that day → whole team\'s EXP ×1.2 for the day (you fold the ×1.2 into the numbers you type).', '', '', '', ''], t: 'note' },
-    { r: ['• Lord: broken when a team beats the season\'s single-day revenue record → next day that team\'s Crystal War damage ×2 (again, you fold the ×2 into amount_rm/exp). ⚠️ Because this is manual, check the Buffs/Crystal_War tabs each morning for a pending Lord day so you don\'t forget to double it.', '', '', '', ''], t: 'note' },
+    { r: ['GOLD & SKINS', '', '', '', ''], t: 'section' },
+    { r: ['• Gold earned = total approved EXP × the player\'s skin multiplier. Spending Gold in the shop never lowers Rank or Level.', '', '', '', ''], t: 'note' },
+    { r: ['• Skin multiplier by Level: Lv1–9 ×1.0, Lv10+ ×1.1 (Elite), Lv20+ ×1.2 (Legend) — higher level earns Gold faster.', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
     { r: ['GOLDEN RULES', '', '', '', ''], t: 'section' },

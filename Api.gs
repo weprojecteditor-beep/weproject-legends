@@ -13,20 +13,19 @@
  *   Execute as: Me · Who has access: Anyone with the link.
  *
  * ENDPOINTS (GET, ?action=)
- *   state&team=weproject   → mobile battlefield state for that team
- *   tv                     → neutral dual-team state for the TV broadcast
+ *   state                  → mobile battlefield state (World Boss + rankings)
+ *   tv                     → World Boss broadcast state for the office TV
  *   player&id=P001&pin=... → one player's profile
- *   shop&team=weproject    → that team's shop items + live stock
+ *   shop                   → WeProject shop items + live stock
  *   roster                 → { playerId, name, role, team } for every active
- *                             player, both teams — login hero-picker only,
- *                             no PIN/gold/EXP/team-internal data exposed
+ *                             WeProject player — login hero-picker only,
+ *                             no PIN/gold/EXP exposed
  *
  * ENDPOINTS (POST, ?action=, text/plain JSON body — see CORS NOTE)
  *   redeem        { playerId, pin, itemId }
  *   submitMission { playerId, pin, missionId }   — submitting again while
  *                                                  pending cancels it
  *   setHeroClass  { playerId, pin, heroClass, gender }
- *   lockWeek      { adminPin, weekNo }            — GM weekly settlement
  *
  * CALCULATION RULES (SPEC §Phase 2 + §4.0, the authoritative Crystal War
  * model)
@@ -37,20 +36,15 @@
  *      goldPendingAdjustment + goldRealValue.
  *   3. Rank uses SEASON (calendar month) EXP; Level uses ALL-TIME EXP.
  *   4. Daily cap is a reference value only — never enforced/rejected here.
- *   5. Crystal War: weekly rope (net RM this week, resets Monday) and
- *      personal Damage (RM summed all season, never resets) are two
- *      different views of the same amount_rm rows — see §4.0. Towers are a
- *      discrete weekly win counter, settled by lockWeek (GM, Sun 23:59).
- *      A settlement week with <4 business days folds into the prior week
- *      instead of awarding its own tower (protects against a 2-day fluke).
- *   6. Power Creep is auto-claimed (no GM judgment): first today's approved
- *      row whose item text contains "double kill". Lord is judged by the
- *      API (record-break hint) but the ×2 is applied and confirmed by the
- *      GM directly in the Crystal_War tab (lord_double_side/date) since
- *      the multiplier itself is folded into numbers by hand.
- *   7. Pace/bounty eligibility is only FLAGGED (from join_date / season
- *      EXP) — the API never grants EXP or badges automatically.
- *   8. PIN failures are rate-limited via CacheService (Config
+ *   5. World Boss: one monthly boss with boss_target HP (Config, default
+ *      1,000,000). Damage = approved amount_rm summed across WeProject for
+ *      the CURRENT calendar month; the boss is beaten when damage >= target.
+ *      Both the boss and Rank use the live calendar month, so both auto-reset
+ *      on the 1st with no GM action. Each player's "damage" in the ranking is
+ *      the same month-scoped amount_rm.
+ *   6. Pace/bounty eligibility is only FLAGGED (from join_date / month EXP)
+ *      — the API never grants EXP or badges automatically.
+ *   7. PIN failures are rate-limited via CacheService (Config
  *      pin_fail_limit / pin_fail_window_min); errors never reveal whether
  *      a player_id exists or another player's data.
  *
@@ -322,8 +316,8 @@ function laneMatchupsForTeam(neutralList, team) {
 
 /** This team's players ranked by season revenue (amount_rm) — the "attack" board. */
 function getDamageRanking(players, expApproved, cfg, levelTh, team) {
-  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
   var mb = monthBoundsNow();
+  var seasonStart = mb.start, seasonEnd = mb.end; // Rank = this calendar month, self-resets on the 1st
   var dmg = {}, seasonExp = {}, allExp = {};
   expApproved.forEach(function (r) {
     var d = dateStr(r.date);
@@ -553,7 +547,8 @@ function getPlayer(id, pin) {
 
   var cfg = getConfig();
   var levelTh = buildLevelThresholds(cfg);
-  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
+  var mb = monthBoundsNow();
+  var seasonStart = mb.start, seasonEnd = mb.end; // Rank window = current calendar month
   var today = todayStr();
 
   var mine = getRows('EXP_Log').filter(function (r) { return r.player_id === id && isApproved(r); });
@@ -654,7 +649,8 @@ function computePaceEligibility(p, mine, cfg, players) {
     out.push({ type: 'pace', label: 'Fast Climber — Lv20 within ' + num(cfg.pace_lv20_days) + ' days', bonus: num(cfg.pace_lv20_bonus) });
   }
 
-  var earliest = findEarliestSeasonThresholdCrosser(players, num(cfg.lv15), dateStr(cfg.season_start), dateStr(cfg.season_end));
+  var mb = monthBoundsNow();
+  var earliest = findEarliestSeasonThresholdCrosser(players, num(cfg.lv15), mb.start, mb.end);
   if (earliest && earliest.playerId === p.player_id) {
     out.push({ type: 'bounty', label: 'First to Lv15 season EXP this season', bonus: num(cfg.bounty_lv15) });
   }
