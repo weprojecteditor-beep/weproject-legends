@@ -1,11 +1,9 @@
 /**
- * WEPROJECT LEGENDS — Phase 2: Apps Script API (Web App) — SPEC V5.1
+ * WEPROJECT LEGENDS — API (Apps Script Web App) — World Boss model
  * =====================================================================
- * Second file in the same Apps Script project as Code.gs (Phase 1).
- * Shares Code.gs's top-level `var`/`function` globals: CATEGORIES, TEAMS,
- * ROLE_OPTIONS, HERO_CLASS_BY_ROLE, BUFF_TYPES, BUFF_STATUSES,
- * CRYSTAL_BROKEN_OPTIONS, LORD_SIDE_OPTIONS, monthStartStr/monthEndStr/
- * mondayOfThisWeekStr/currentMonthStr — do not redeclare those here.
+ * Second file in the same Apps Script project as Code.gs. Shares Code.gs's
+ * top-level globals (HERO_CLASS_BY_ROLE, monthStartStr, monthEndStr, …) —
+ * do not redeclare those here.
  *
  * DEPLOY
  *   Deploy → Manage deployments → Edit → New version (editing code alone
@@ -16,7 +14,7 @@
  *   state                  → mobile battlefield state (World Boss + rankings)
  *   tv                     → World Boss broadcast state for the office TV
  *   player&id=P001&pin=... → one player's profile
- *   shop                   → WeProject shop items + live stock
+ *   shop                   → shop items + live stock
  *   roster                 → { playerId, name, role, team } for every active
  *                             WeProject player — login hero-picker only,
  *                             no PIN/gold/EXP exposed
@@ -27,14 +25,13 @@
  *                                                  pending cancels it
  *   setHeroClass  { playerId, pin, heroClass, gender }
  *
- * CALCULATION RULES (SPEC §Phase 2 + §4.0, the authoritative Crystal War
- * model)
+ * CALCULATION RULES
  *   1. Only EXP_Log rows with approved=TRUE are counted anywhere.
- *   2. Gold = cumulative approved EXP − redemptions that aren't rejected
- *      (pending included, so Gold freezes instantly). Displayed clamp ≥0;
- *      if the real value is negative, `player` also returns
- *      goldPendingAdjustment + goldRealValue.
- *   3. Rank uses SEASON (calendar month) EXP; Level uses ALL-TIME EXP.
+ *   2. Gold = (all-time approved EXP × skin multiplier) − redemptions that
+ *      aren't rejected (pending included, so Gold freezes instantly).
+ *      Displayed clamp ≥0; if the real value is negative, `player` also
+ *      returns goldPendingAdjustment + goldRealValue.
+ *   3. Rank uses the season window (calendar month) EXP; Level uses ALL-TIME EXP.
  *   4. Daily cap is a reference value only — never enforced/rejected here.
  *   5. World Boss: one boss with boss_target HP (Config, default 1,000,000).
  *      Damage = approved amount_rm summed across WeProject over the active
@@ -96,7 +93,7 @@ function doPost(e) {
 }
 
 /* ================================================================== */
-/* Endpoint: state (mobile, per-team)                                  */
+/* Endpoint: state (mobile)                                            */
 /* ================================================================== */
 
 function getState(team) {
@@ -117,7 +114,7 @@ function getState(team) {
 }
 
 /* ================================================================== */
-/* Endpoint: tv (World Boss broadcast — single team)                   */
+/* Endpoint: tv (World Boss broadcast)                                 */
 /* ================================================================== */
 
 function getTv() {
@@ -136,9 +133,10 @@ function getTv() {
 }
 
 /* ================================================================== */
-/* World Boss — WeProject vs one monthly boss (target = boss_target)   */
-/* Boss HP drains from `target` down as approved revenue (amount_rm)    */
-/* accumulates this calendar month. Auto-resets on the 1st.            */
+/* World Boss — WeProject vs one boss (boss_target HP)                 */
+/* Damage = approved amount_rm over the active season window           */
+/* (Config season_start..season_end). No auto rollover; the GM resets  */
+/* to a fresh month by running setSeasonToThisMonth (Code.gs).         */
 /* ================================================================== */
 
 /** { start, end, label } for the current calendar month (script tz). */
@@ -190,18 +188,7 @@ function getBossState(cfg, players, expApproved) {
   };
 }
 
-function getCrystalWarRow() {
-  return getRows('Crystal_War')[0] || {};
-}
-
-/** { start, end } as 'yyyy-MM-dd' for the Mon–Sun week starting at weekStartStr. */
-function weekBounds(weekStartStr) {
-  var start = new Date(weekStartStr);
-  var end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return { start: dateStr(start), end: dateStr(end) };
-}
-
+/** Sum a team's approved amount_rm between two yyyy-MM-dd dates (inclusive). */
 function sumTeamRevenueInRange(players, expApproved, team, startStr, endStr) {
   var teamIds = {};
   players.forEach(function (p) { if (p.team === team) teamIds[p.player_id] = true; });
@@ -214,125 +201,11 @@ function sumTeamRevenueInRange(players, expApproved, team, startStr, endStr) {
   return sum;
 }
 
-function getCrystalWarState(cfg, players, expApproved, team) {
-  var row = getCrystalWarRow();
-  var wb = weekBounds(dateStr(row.week_start));
-  var liveNetNeutral = sumTeamRevenueInRange(players, expApproved, 'weproject', wb.start, wb.end)
-                      - sumTeamRevenueInRange(players, expApproved, 'wellous', wb.start, wb.end);
-
-  var towersPerSide = cfgInt(cfg.towers_per_side, 3);
-  var lockTime = cfgTime(cfg.lock_time, '23:59');
-  var wpTowers = num(row.wp_towers);
-  var wlTowers = num(row.wl_towers);
-  var crystalBroken = String(row.crystal_broken || 'none');
-
-  // Draining-HP model: each team's cumulative SEASON revenue is the damage it
-  // deals to the enemy base — Tower I → Tower II → Crystal (segs = HP stages).
-  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
-  var wpSeasonRev = sumTeamRevenueInRange(players, expApproved, 'weproject', seasonStart, seasonEnd);
-  var wlSeasonRev = sumTeamRevenueInRange(players, expApproved, 'wellous', seasonStart, seasonEnd);
-  var segs = [cfgInt(cfg.base_tower1_hp, 300000), cfgInt(cfg.base_tower2_hp, 300000), cfgInt(cfg.base_crystal_hp, 400000)];
-
-  var today = todayStr();
-  var wpToday = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
-  var wlToday = sumTeamRevenueInRange(players, expApproved, 'wellous', today, today);
-  var lordSide = (String(row.lord_double_side || 'none') !== 'none' && dateStr(row.lord_double_date) === today)
-    ? String(row.lord_double_side) : 'none';
-
-  function forTeam(t) {
-    var liveNet = t === 'weproject' ? liveNetNeutral : -liveNetNeutral;
-    var ourTowers = t === 'weproject' ? wpTowers : wlTowers;
-    var enemyTowers = t === 'weproject' ? wlTowers : wpTowers;
-    var dealtByUs = t === 'weproject' ? wpSeasonRev : wlSeasonRev;
-    var dealtByThem = t === 'weproject' ? wlSeasonRev : wpSeasonRev;
-    var ourToday = t === 'weproject' ? wpToday : wlToday;
-    return {
-      weekNo: num(row.current_week_no),
-      weekStart: wb.start,
-      lockAt: wb.end + ' ' + lockTime,
-      liveNet: liveNet,
-      liveLeader: liveNet > 0 ? 'us' : (liveNet < 0 ? 'enemy' : 'even'),
-      ourTowers: ourTowers,
-      enemyTowers: enemyTowers,
-      towersPerSide: towersPerSide,
-      dealtByUs: dealtByUs,       // our damage on the ENEMY base
-      dealtByThem: dealtByThem,   // enemy damage on OUR base
-      segs: segs,                 // [tower1Hp, tower2Hp, crystalHp]
-      ourToday: ourToday,         // revenue dealt today
-      crystalBroken: crystalBroken === 'none' ? 'none' : (crystalBroken === t ? 'us' : 'enemy'),
-      lord: { side: lordSide === 'none' ? 'none' : (lordSide === t ? 'us' : 'enemy'), date: row.lord_double_date ? dateStr(row.lord_double_date) : '' }
-    };
-  }
-
-  var neutral = {
-    weekNo: num(row.current_week_no),
-    weekStart: wb.start,
-    lockAt: wb.end + ' ' + lockTime,
-    liveNet: liveNetNeutral, // positive = weproject ahead this week
-    wpTowers: wpTowers,
-    wlTowers: wlTowers,
-    towersPerSide: towersPerSide,
-    dealtByWp: wpSeasonRev,
-    dealtByWl: wlSeasonRev,
-    segs: segs,
-    wpToday: wpToday,
-    wlToday: wlToday,
-    crystalBroken: crystalBroken,
-    lord: { side: lordSide, date: row.lord_double_date ? dateStr(row.lord_double_date) : '' }
-  };
-
-  return { forTeam: forTeam(team), neutral: neutral };
-}
-
 /* ================================================================== */
-/* Lane Matchups (cross-team KO board — name + damage ONLY)            */
+/* Rankings + feed                                                     */
 /* ================================================================== */
 
-function computeLaneMatchupsNeutral(players, expApproved, cfg) {
-  var margin = cfgInt(cfg.ko_margin, 2);
-  var damageByPlayer = {};
-  expApproved.forEach(function (r) { damageByPlayer[r.player_id] = (damageByPlayer[r.player_id] || 0) + num(r.amount_rm); });
-
-  function teamRanked(team) {
-    return players.filter(function (p) { return p.active && p.team === team; })
-      .map(function (p) { return { playerId: p.player_id, name: p.name, damage: damageByPlayer[p.player_id] || 0 }; })
-      .sort(function (a, b) { return b.damage - a.damage; });
-  }
-
-  var wp = teamRanked('weproject');
-  var wl = teamRanked('wellous');
-  var slots = Math.min(wp.length, wl.length); // never reveal the larger team's headcount
-
-  var out = [];
-  for (var i = 0; i < slots; i++) {
-    var a = wp[i], b = wl[i];
-    var ko = null;
-    if (b.damage === 0 && a.damage > 0) ko = 'weproject';
-    else if (a.damage === 0 && b.damage > 0) ko = 'wellous';
-    else if (a.damage >= b.damage * margin && a.damage > 0) ko = 'weproject';
-    else if (b.damage >= a.damage * margin && b.damage > 0) ko = 'wellous';
-    out.push({ slot: i + 1, weproject: { name: a.name, damage: a.damage }, wellous: { name: b.name, damage: b.damage }, ko: ko });
-  }
-  return out;
-}
-
-function laneMatchupsForTeam(neutralList, team) {
-  var enemyTeam = team === 'weproject' ? 'wellous' : 'weproject';
-  return neutralList.map(function (m) {
-    return {
-      slot: m.slot,
-      us: m[team],
-      enemy: m[enemyTeam],
-      ko: m.ko === team ? 'us' : (m.ko === enemyTeam ? 'enemy' : null)
-    };
-  });
-}
-
-/* ================================================================== */
-/* Creative ranking, feeds, faction summary                            */
-/* ================================================================== */
-
-/** This team's players ranked by season revenue (amount_rm) — the "attack" board. */
+/** Players ranked by their season revenue (= damage dealt to the boss). */
 function getDamageRanking(players, expApproved, cfg, levelTh, team) {
   var sw = seasonWindow(cfg);
   var seasonStart = sw.start, seasonEnd = sw.end; // boss/Rank window = configured season (this month)
@@ -356,6 +229,7 @@ function getDamageRanking(players, expApproved, cfg, levelTh, team) {
     .sort(function (a, b) { return b.damage - a.damage; });
 }
 
+/** Players ranked by Winning Creative / High-CTR counts (from item text). */
 function getCreativeRanking(players, expApproved, team) {
   var byPlayer = {};
   expApproved.forEach(function (r) {
@@ -377,6 +251,7 @@ function getCreativeRanking(players, expApproved, team) {
     .sort(function (a, b) { return (b.winningCount - a.winningCount) || (b.highCtrCount - a.highCtrCount); });
 }
 
+/** Today's Achievements_Feed rows for a team, newest first. */
 function getTeamFeed(players, team) {
   var today = todayStr();
   var teamIds = {};
@@ -388,27 +263,6 @@ function getTeamFeed(players, team) {
       var p = playerById(players, f.player_id);
       return { playerId: f.player_id, name: p ? p.name : f.player_id, tag: f.tag, icon: f.icon, description: f.description, exp: num(f.exp), timestamp: dateTimeStr(f.timestamp) };
     });
-}
-
-function getMixedFeed(players) {
-  var today = todayStr();
-  return getRows('Achievements_Feed')
-    .filter(function (f) { return dateStr(f.timestamp) === today; })
-    .sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); })
-    .map(function (f) {
-      var p = playerById(players, f.player_id);
-      return { playerId: f.player_id, name: p ? p.name : f.player_id, team: p ? p.team : '', tag: f.tag, icon: f.icon, description: f.description, exp: num(f.exp), timestamp: dateTimeStr(f.timestamp) };
-    });
-}
-
-function getFactionSummary(players, expApproved, team) {
-  var damageByPlayer = {};
-  expApproved.forEach(function (r) { damageByPlayer[r.player_id] = (damageByPlayer[r.player_id] || 0) + num(r.amount_rm); });
-  var top3 = players.filter(function (p) { return p.active && p.team === team; })
-    .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, damage: damageByPlayer[p.player_id] || 0 }; })
-    .sort(function (a, b) { return b.damage - a.damage; })
-    .slice(0, 3);
-  return { top3Damage: top3, feed: getTeamFeed(players, team) };
 }
 
 /* ================================================================== */
@@ -426,129 +280,6 @@ function getMissionsConfig(team) {
   return getRows('Missions').filter(function (m) { return bool(m.active) && m.team === team; })
     .sort(function (a, b) { return num(a.sort) - num(b.sort); })
     .map(function (m) { return { missionId: m.mission_id, role: m.role, text: m.text_en, exp: num(m.exp), sort: num(m.sort) }; });
-}
-
-/* ================================================================== */
-/* Neutral Buffs: Power Creep (auto-claimed) + Lord (record hint)      */
-/* ================================================================== */
-
-/** Today's revenue for a team + its top contributor (used for the neutral-objective race). */
-function teamTodayRevenue(players, expApproved, team, today) {
-  var teamIds = {};
-  players.forEach(function (p) { if (p.team === team) teamIds[p.player_id] = true; });
-  var byPlayer = {}, total = 0;
-  expApproved.forEach(function (r) {
-    if (!teamIds[r.player_id]) return;
-    if (dateStr(r.date) !== today) return;
-    var v = num(r.amount_rm);
-    total += v;
-    byPlayer[r.player_id] = (byPlayer[r.player_id] || 0) + v;
-  });
-  var topId = '', topV = 0;
-  Object.keys(byPlayer).forEach(function (id) { if (byPlayer[id] > topV) { topV = byPlayer[id]; topId = id; } });
-  var p = playerById(players, topId);
-  return { total: total, topId: topId, topName: p ? p.name : '' };
-}
-
-// Neutral objectives are a REVENUE RACE: the first team to reach the daily
-// target slays it and claims the buff. Slayer = that team's top earner today.
-function getBuffsState(players, expApproved, cfg) {
-  var today = todayStr();
-  var wp = teamTodayRevenue(players, expApproved, 'weproject', today);
-  var wl = teamTodayRevenue(players, expApproved, 'wellous', today);
-  function objective(target) {
-    var wpHit = target > 0 && wp.total >= target;
-    var wlHit = target > 0 && wl.total >= target;
-    var slainTeam = null;
-    if (wpHit && wlHit) slainTeam = wp.total >= wl.total ? 'weproject' : 'wellous';
-    else if (wpHit) slainTeam = 'weproject';
-    else if (wlHit) slainTeam = 'wellous';
-    var win = slainTeam === 'weproject' ? wp : (slainTeam === 'wellous' ? wl : null);
-    return {
-      status: slainTeam ? 'slain' : 'alive',
-      slainTeam: slainTeam || 'none',
-      slainBy: win ? win.topName : '',
-      slainById: win ? win.topId : '',
-      wpProgress: wp.total, wlProgress: wl.total, target: target
-    };
-  }
-  return {
-    powerCreep: objective(cfgInt(cfg.power_creep_target, 300000)),
-    lord: objective(cfgInt(cfg.lord_target, 800000))
-  };
-}
-
-/** First today's approved row mentioning "double kill" claims Power Creep — no GM judgment involved. */
-function claimPowerCreepIfClaimed(expApproved, today) {
-  var todays = expApproved.filter(function (r) { return dateStr(r.date) === today; });
-  for (var i = 0; i < todays.length; i++) {
-    var item = String(todays[i].item || '').toLowerCase();
-    if (item.indexOf('double kill') !== -1) {
-      updateBuffRow('power', today, 'slain', todays[i].player_id);
-      return todays[i].player_id;
-    }
-  }
-  return null;
-}
-
-/** Compares each team's today revenue to their own best day so far this season. */
-function computeRecordBrokenToday(players, expApproved, cfg, today) {
-  var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
-  var out = { weproject: false, wellous: false };
-  ['weproject', 'wellous'].forEach(function (team) {
-    var teamIds = {};
-    players.forEach(function (p) { if (p.team === team) teamIds[p.player_id] = true; });
-    var byDate = {};
-    expApproved.forEach(function (r) {
-      if (!teamIds[r.player_id]) return;
-      var d = dateStr(r.date);
-      if (d < seasonStart || d > seasonEnd) return;
-      byDate[d] = (byDate[d] || 0) + num(r.amount_rm);
-    });
-    var record = 0;
-    Object.keys(byDate).forEach(function (d) { if (d !== today && byDate[d] > record) record = byDate[d]; });
-    var todayTotal = byDate[today] || 0;
-    if (todayTotal > 0 && todayTotal > record) out[team] = true;
-  });
-  return out;
-}
-
-function ensureTodayBuffRow(type) {
-  var today = todayStr();
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Buffs');
-  if (!sheet) return;
-  if (getRows('Buffs').some(function (b) { return dateStr(b.date) === today && b.buff_type === type; })) return;
-
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return;
-  try {
-    var exists = getRows('Buffs').some(function (b) { return dateStr(b.date) === today && b.buff_type === type; });
-    if (!exists) sheet.appendRow([new Date(), type, 'alive', '', '']);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function updateBuffRow(type, dateStrVal, status, slainBy) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Buffs');
-  if (!sheet) return;
-  var values = sheet.getDataRange().getValues();
-  for (var r = 1; r < values.length; r++) {
-    if (dateStr(values[r][0]) === dateStrVal && values[r][1] === type) {
-      if (values[r][2] !== status || values[r][3] !== slainBy) {
-        var lock = LockService.getScriptLock();
-        if (lock.tryLock(5000)) {
-          try {
-            sheet.getRange(r + 1, 3).setValue(status);
-            sheet.getRange(r + 1, 4).setValue(slainBy);
-          } finally {
-            lock.releaseLock();
-          }
-        }
-      }
-      return;
-    }
-  }
 }
 
 /* ================================================================== */
@@ -676,7 +407,7 @@ function computePaceEligibility(p, mine, cfg, players) {
   return out;
 }
 
-/** Across ALL players, who first crossed thresholdExp in cumulative SEASON exp this season — re-triggers every season. */
+/** Across ALL players, who first crossed thresholdExp in cumulative SEASON exp this season. */
 function findEarliestSeasonThresholdCrosser(players, thresholdExp, seasonStart, seasonEnd) {
   var seasonRows = getRows('EXP_Log').filter(isApproved).filter(function (r) {
     var d = dateStr(r.date);
@@ -857,135 +588,8 @@ function setHeroClass(playerId, pin, heroClass, gender) {
 }
 
 /* ================================================================== */
-/* POST: lockWeek (GM weekly Crystal War settlement)                   */
+/* Config write — used by Code.gs season-reset helpers                 */
 /* ================================================================== */
-
-function lockWeek(adminPin, weekNo) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var cfg = getConfig();
-    var adminPinCfg = String(cfg.admin_pin == null ? '' : cfg.admin_pin).trim();
-    if (adminPinCfg === '' || String(adminPin || '').trim() !== adminPinCfg) {
-      return { ok: false, error: 'Wrong admin PIN' };
-    }
-
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Crystal_War');
-    var values = sheet.getDataRange().getValues();
-    var headers = values[0];
-    var col = {};
-    headers.forEach(function (h, i) { col[h] = i; });
-    var row = values[1];
-    if (!row) return { ok: false, error: 'Crystal_War tab has no data row' };
-
-    var currentWeekNo = num(row[col['current_week_no']]);
-    if (weekNo != null && Number(weekNo) !== currentWeekNo) {
-      return { ok: false, error: 'Week already advanced (expected week ' + currentWeekNo + ')' };
-    }
-
-    var players = getPlayers();
-    var expApproved = getRows('EXP_Log').filter(isApproved);
-
-    var weekStartStr = dateStr(row[col['week_start']]);
-    var wb = weekBounds(weekStartStr);
-    var seasonStart = dateStr(cfg.season_start), seasonEnd = dateStr(cfg.season_end);
-
-    var workDays = countWeekdaysInRange(wb.start, wb.end, seasonStart, seasonEnd);
-    var net = sumTeamRevenueInRange(players, expApproved, 'weproject', wb.start, wb.end)
-            - sumTeamRevenueInRange(players, expApproved, 'wellous', wb.start, wb.end);
-
-    var towersPerSide = cfgInt(cfg.towers_per_side, 3);
-    var wpTowers = num(row[col['wp_towers']]);
-    var wlTowers = num(row[col['wl_towers']]);
-    var crystalBroken = String(row[col['crystal_broken']] || 'none');
-    var skipped = false;
-    var winnerSide = null;
-
-    if (workDays < 4) {
-      // Residual month-end week — does not settle on its own (its revenue already
-      // counted permanently toward personal Damage, so no team loses out).
-      skipped = true;
-    } else if (net > 0) {
-      winnerSide = 'weproject';
-    } else if (net < 0) {
-      winnerSide = 'wellous';
-    }
-
-    if (winnerSide && crystalBroken === 'none') {
-      var current = winnerSide === 'weproject' ? wpTowers : wlTowers;
-      if (current >= towersPerSide) {
-        crystalBroken = winnerSide; // already had all enemy towers down — winning again shatters the crystal
-      } else {
-        current += 1;
-        if (winnerSide === 'weproject') wpTowers = current; else wlTowers = current;
-      }
-    }
-
-    var nextWeekStart = new Date(wb.end);
-    nextWeekStart.setDate(nextWeekStart.getDate() + 1);
-    var nextWeekStartStr = dateStr(nextWeekStart);
-
-    var newSeason = String(row[col['season']] || currentMonthStr());
-    var newWeekNo = currentWeekNo + 1;
-    var rolledSeason = false;
-    var newLordSide = row[col['lord_double_side']];
-    var newLordDate = row[col['lord_double_date']];
-
-    if (monthStr(nextWeekStart) !== monthStr(new Date(weekStartStr))) {
-      rolledSeason = true;
-      newSeason = monthStr(nextWeekStart);
-      newWeekNo = 1;
-      wpTowers = 0; wlTowers = 0; crystalBroken = 'none';
-      newLordSide = 'none'; newLordDate = '';
-    }
-
-    row[col['season']] = newSeason;
-    row[col['current_week_no']] = newWeekNo;
-    row[col['week_start']] = nextWeekStartStr;
-    row[col['wp_towers']] = wpTowers;
-    row[col['wl_towers']] = wlTowers;
-    row[col['crystal_broken']] = crystalBroken;
-    row[col['lord_double_side']] = newLordSide;
-    row[col['lord_double_date']] = newLordDate;
-
-    sheet.getRange(2, 1, 1, headers.length).setValues([headers.map(function (h) { return row[col[h]]; })]);
-
-    if (rolledSeason) {
-      setConfigValue('season_start', monthStartStrFromDate(nextWeekStart));
-      setConfigValue('season_end', monthEndStrFromDate(nextWeekStart));
-    }
-
-    CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']);
-
-    return {
-      ok: true,
-      settledWeek: currentWeekNo,
-      weekRange: wb,
-      workDays: workDays,
-      skipped: skipped,
-      net: net,
-      winnerSide: winnerSide,
-      towers: { weproject: wpTowers, wellous: wlTowers },
-      crystalBroken: crystalBroken,
-      rolledToNewSeason: rolledSeason,
-      nextWeekNo: newWeekNo,
-      nextWeekStart: nextWeekStartStr
-    };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function countWeekdaysInRange(startStr, endStr, boundStartStr, boundEndStr) {
-  var start = new Date(Math.max(new Date(startStr), new Date(boundStartStr)));
-  var end = new Date(Math.min(new Date(endStr), new Date(boundEndStr)));
-  var count = 0;
-  for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    var day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
-  }
-  return count;
-}
 
 function setConfigValue(key, value) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Config');
@@ -995,14 +599,6 @@ function setConfigValue(key, value) {
     if (values[r][0] === key) { sheet.getRange(r + 1, 2).setValue(value); return; }
   }
   sheet.appendRow([key, value]);
-}
-
-function monthStartStrFromDate(d) {
-  return Utilities.formatDate(new Date(d.getFullYear(), d.getMonth(), 1), tz(), 'yyyy-MM-dd');
-}
-
-function monthEndStrFromDate(d) {
-  return Utilities.formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0), tz(), 'yyyy-MM-dd');
 }
 
 /* ================================================================== */
@@ -1194,21 +790,13 @@ function num(v) {
 
 /**
  * Config integer that may come back as a year-1900 Date — happens when the
- * value cell inherited a stale date format from an earlier Config layout
- * (Sheets renders the number 3 as "Jan 2, 1900" and getValues returns a
- * Date). Fall back to the default instead of a garbage timestamp.
+ * value cell inherited a stale date format (Sheets renders the number 3 as
+ * "Jan 2, 1900" and getValues returns a Date). Fall back to the default.
  */
 function cfgInt(v, def) {
   if (v instanceof Date) return def;
   var n = num(v);
   return n > 0 ? n : def;
-}
-
-/** lock_time may be a real Date (Sheets auto-converts "23:59") — normalize back to HH:mm. */
-function cfgTime(v, def) {
-  if (v instanceof Date) return Utilities.formatDate(v, tz(), 'HH:mm');
-  var s = String(v == null ? '' : v).trim();
-  return s || def;
 }
 
 function bool(v) {
@@ -1217,8 +805,6 @@ function bool(v) {
   var s = String(v).trim().toLowerCase();
   return s === 'true' || s === 'yes' || s === '1';
 }
-
-function round1(n) { return Math.round(n * 10) / 10; }
 
 /* ---- dates (script timezone) ---- */
 function tz() { return Session.getScriptTimeZone(); }
@@ -1238,11 +824,4 @@ function dateTimeStr(v) {
 
 function todayStr() {
   return Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd');
-}
-
-/** A cell that Sheets may have auto-converted "2026-07" text into a real Date. */
-function monthStr(v) {
-  if (v === '' || v == null) return '';
-  if (v instanceof Date) return Utilities.formatDate(v, tz(), 'yyyy-MM');
-  return String(v);
 }
