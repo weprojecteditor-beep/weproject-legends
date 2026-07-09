@@ -1,27 +1,27 @@
 /**
- * WEPROJECT LEGENDS — Phase 1: Google Sheets structure (SPEC V5.1)
+ * WEPROJECT LEGENDS — Google Sheets structure + GM helpers
  * =====================================================================
- * V5.1 replaces World Boss with Crystal War, adds Hero Class, and adds
- * team (weproject/wellous) across the board. See SPEC.md for the full
- * authoritative spec — this file only builds the database structure.
+ * Phase-1 file: builds the database tabs and holds the GM run-buttons.
+ * Api.gs (the web app) reads the tabs this file creates.
  *
  * TWO ENTRY POINTS — pick the right one:
  *
- *   • setupWeprojectLegends()        — FRESH sheet only. Builds all 11
- *     data tabs + Guide from scratch, seeded with WeProject roster/shop/
- *     actions/missions. Re-running WIPES any data already in those tabs
- *     (same behavior as before). Do NOT run this on the live sheet.
+ *   • setupWeprojectLegends()        — FRESH sheet only. Builds all data
+ *     tabs + Guide from scratch, seeded with the WeProject roster/shop/
+ *     actions/missions. Re-running WIPES any data already in those tabs.
+ *     Do NOT run this on the live sheet.
  *
  *   • migrateExistingSheetToV5_1()   — Upgrades the LIVE sheet in place.
  *     Non-destructive: reshapes Players/Shop/EXP_Log/Config by reading
- *     existing values first, archives (renames, does not delete) the old
- *     Boss tab, and creates the 5 new tabs only if they don't exist yet.
- *     Safe to re-run — already-migrated tabs are skipped.
+ *     existing values first, and creates missing tabs only. Safe to re-run.
  *
- * ⚠️ Running the migration changes the sheet structure that Api.gs reads.
- * The live app (mobile + TV) will look broken (missing Boss, no Crystal
- * War) until Api.gs is rewritten for V5.1 — that's a separate Phase 2
- * step. Expect a gap between running this and shipping the new API.
+ * WORLD BOSS MODEL: WeProject fights one monthly boss (boss_target HP).
+ * The Crystal_War / Buffs tabs are legacy — still built for compatibility
+ * but hidden by simplifySheet and unused by Api.gs. After pasting new code,
+ * run applyWorldBossRules once, then Deploy → New version.
+ *
+ * NOTE: all GM buttons pop a confirmation via uiAlert_(), which silently
+ * falls back to Logger when run from the editor (where getUi() has no UI).
  * =====================================================================
  */
 
@@ -37,27 +37,13 @@ var CRYSTAL_BROKEN_OPTIONS = ['none', 'weproject', 'wellous'];
 var LORD_SIDE_OPTIONS = ['none', 'weproject', 'wellous'];
 
 // Hero Class is locked per role (role decides balance); players only pick
-// which hero within their role's class family. Kept here for reference —
-// Api.gs (Phase 2) enforces this mapping in setHeroClass.
+// which hero within their role's class family. Api.gs enforces this in setHeroClass.
 var HERO_CLASS_BY_ROLE = {
   Marketer:    ['Marksman', 'Mage', 'Assassin'],   // Carry
   LiveHost:    ['Fighter', 'Tank', 'Berserker'],   // Fighter
   Editor:      ['Support', 'Bard', 'Summoner'],    // Support
-  Salesperson: ['Marksman', 'Assassin', 'Berserker'] // Slayer (Wellous sales)
+  Salesperson: ['Marksman', 'Assassin', 'Berserker'] // Slayer (legacy)
 };
-
-// Real Wellous roster (P101–P108): [player_id, name, role, avatar].
-// Salespeople earn revenue; Editors / the Marketer don't contribute to sales.
-var WELLOUS_ROSTER = [
-  ['P101', 'Yodaa',    'Salesperson', '🦂'],
-  ['P102', 'Vicky',    'Salesperson', '🐉'],
-  ['P103', 'Lilian',   'Salesperson', '🦅'],
-  ['P104', 'Janice',   'Salesperson', '🔱'],
-  ['P105', 'Fish',     'Salesperson', '🐟'],
-  ['P106', 'Sin Huey', 'Editor',      '🖌️'],
-  ['P107', 'Wei Hao',  'Editor',      '🎥'],
-  ['P108', 'Billy',    'Marketer',    '📣']
-];
 
 var GROW_ROWS = 2000; // apply validation this many rows down for sheets that grow
 var SMALL_ROWS = 200;
@@ -87,13 +73,9 @@ function setupWeprojectLegends() {
 
   removeDefaultSheet(ss);
 
-  SpreadsheetApp.getUi().alert(
-    'WEPROJECT LEGENDS — V5.1',
-    'Phase 1 complete — 11 data tabs + a Guide tab created and seeded ' +
-    '(WeProject roster only; add Wellous rows with team=wellous when ready).\n\n' +
-    'Next: assign PINs and join_dates in Players, then Phase 2 (Api.gs) for Crystal War.',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+  uiAlert_('WEPROJECT LEGENDS',
+    'Setup complete — data tabs + a Guide tab created and seeded.\n\n' +
+    'Next: assign PINs and join_dates in Players, then run applyWorldBossRules and Deploy the API.');
 }
 
 /* ------------------------------------------------------------------ */
@@ -109,14 +91,14 @@ function migrateExistingSheetToV5_1() {
     : 'Players: already has team/hero_class — skipped.');
 
   summary.push(migrateShopTab(ss)
-    ? 'Shop: added team column. Existing items set to team=weproject — add Wellous items separately.'
+    ? 'Shop: added team column. Existing items set to team=weproject.'
     : 'Shop: already has team — skipped.');
 
   migrateExpLogCategories(ss);
-  summary.push('EXP_Log: category dropdown updated (no more "boss"); any existing boss rows were recategorized to "action" — amount_rm still counts the same way toward Crystal War / Damage.');
+  summary.push('EXP_Log: category dropdown updated; any existing boss rows were recategorized to "action" — amount_rm still counts the same way.');
 
   migrateConfigTab(ss);
-  summary.push('Config: rebuilt with Crystal War / KO / Pace / Security keys. rage_cap and rage_multiplier removed (no rage mechanic in Crystal War). Existing rank/level/season values you had were preserved.');
+  summary.push('Config: rebuilt with all keys; existing rank/level/season values you had were preserved.');
 
   summary.push(archiveBossTab(ss)
     ? 'Boss tab renamed to "Boss_ARCHIVED" — data kept, no longer read by the app.'
@@ -133,16 +115,13 @@ function migrateExistingSheetToV5_1() {
     : 'Actions/Missions/Mission_Log/Crystal_War/Buffs already exist — left untouched.');
 
   buildGuide(ss);
-  summary.push('Guide tab rewritten for V5.1 rules.');
+  summary.push('Guide tab rewritten.');
 
   removeDefaultSheet(ss);
 
-  SpreadsheetApp.getUi().alert(
-    'Migrated to V5.1',
+  uiAlert_('Migration complete',
     summary.join('\n\n') +
-    '\n\n⚠️ The live mobile/TV app will look broken (no Boss, no Crystal War yet) until Api.gs is rewritten for this structure — that is Phase 2, a separate step.',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+    '\n\nNext: run applyWorldBossRules, then Deploy → New version so the live API is up to date.');
 }
 
 function migratePlayersTab(ss) {
@@ -310,7 +289,23 @@ function removeDefaultSheet(ss) {
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
 }
 
-/** 'YYYY-MM-DD' for the 1st of the current month, kept as a string default (avoid Sheets' auto Date-cast — see SPEC §Api gotchas). */
+/**
+ * Safe alert: shows a popup when a spreadsheet UI exists, otherwise logs.
+ * Lets every GM button run from the script editor without throwing
+ * "Cannot call SpreadsheetApp.getUi() from this context".
+ * Call as uiAlert_(title, msg) or uiAlert_(msg).
+ */
+function uiAlert_(title, msg) {
+  if (msg === undefined) { msg = String(title); title = 'WEPROJECT LEGENDS'; }
+  try {
+    var ui = SpreadsheetApp.getUi();
+    ui.alert(title, msg, ui.ButtonSet.OK);
+  } catch (e) {
+    Logger.log(title + ' — ' + msg);
+  }
+}
+
+/** 'YYYY-MM-DD' for the 1st of the current month, kept as a string default (avoid Sheets' auto Date-cast). */
 function monthStartStr() {
   var d = new Date();
   return Utilities.formatDate(new Date(d.getFullYear(), d.getMonth(), 1), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -342,8 +337,7 @@ function currentMonthStr() {
 function buildPlayers(ss) {
   var headers = ['player_id', 'team', 'name', 'role', 'hero_class', 'gender_pref', 'pin', 'avatar', 'join_date', 'active'];
 
-  // Order matters: P001–P016 exactly as listed in SPEC. hero_class/pin/
-  // join_date left blank — GM assigns PINs, players self-select class.
+  // hero_class/pin/join_date left blank — GM assigns PINs, players self-select class.
   var roster = [
     ['Izz',      'Marketer', '🏹'],
     ['Nina',     'Marketer', '🔥'],
@@ -386,7 +380,7 @@ function buildExpLog(ss) {
     'category',   // dropdown: mission/action/milestone/achievement/assist/mvp/adjust
     'item',       // free text, e.g. "Winning Creative #A114"
     'exp',        // number (can be negative for Refund clawback)
-    'amount_rm',  // RM amount for Revenue rows — drives both personal Damage AND Crystal War, else blank
+    'amount_rm',  // RM amount for Revenue rows — damage on the World Boss + Damage board, else blank
     'approved',   // checkbox — only takes effect once ticked
     'note'        // remarks
   ];
@@ -463,8 +457,6 @@ function configDefaultRows() {
     ['week_reset_day',  'monday'],
     ['lock_time',        '23:59'],
     ['lord_multiplier',  2],
-
-    // Lane Matchup KO board
     ['ko_margin', 2],
 
     // Pace badges / bounty — judged from join_date (pace) or season EXP (bounty)
@@ -472,13 +464,13 @@ function configDefaultRows() {
     ['pace_lv10_bonus', 500],
     ['pace_lv20_days',  75],
     ['pace_lv20_bonus', 1000],
-    ['bounty_lv15',     1000], // first-to-Lv15-EQUIVALENT-season-EXP bounty, re-triggers each season
+    ['bounty_lv15',     1000], // first-to-Lv15-season-EXP bounty, re-triggers each season
 
     // PIN security
     ['pin_fail_limit', 10],
     ['pin_fail_window_min', 10],
 
-    // GM-only actions (lockWeek). CHANGE THIS before go-live.
+    // GM-only admin PIN (legacy). CHANGE THIS before go-live.
     ['admin_pin', '1001']
   ];
 }
@@ -488,7 +480,7 @@ function buildConfig(ss) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab 6: Achievements_Feed  (source for the TV kill-feed / bullets)   */
+/* Tab 6: Achievements_Feed  (source for the TV feed / bullets)        */
 /* ------------------------------------------------------------------ */
 
 function buildAchievementsFeed(ss) {
@@ -498,20 +490,20 @@ function buildAchievementsFeed(ss) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab 7: Actions  (EXP rules table = the Hero Class bonus carrier)    */
+/* Tab 7: Actions  (EXP rules table)                                   */
 /* ------------------------------------------------------------------ */
 
 function buildActions(ss) {
   var headers = ['action_id', 'team', 'role', 'name_en', 'condition_en', 'exp', 'daily_cap', 'category', 'active'];
 
   // role='Any' = applies to every role. Numbers here are starter values —
-  // GM tunes freely; Guide page reads straight from this table.
+  // GM tunes freely; the Guide page reads straight from this table.
   var rows = [
     ['A01', 'weproject', 'Marketer', 'Winning Creative',        'Ad marked as a winning creative (hits conversion threshold)', 80, '', 'achievement', true],
     ['A02', 'weproject', 'Marketer', 'High CTR Creative',       'Ad reaches the high-CTR threshold',                            40, 200, 'action', true],
     ['A03', 'weproject', 'Marketer', 'Revenue Milestone',       'Hit a set RM revenue milestone',                               100, '', 'milestone', true],
     ['A04', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
-    ['A05', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day (also claims Power Creep buff for the team)', 20, '', 'action', true],
+    ['A05', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
 
     ['A06', 'weproject', 'LiveHost', 'Live Closed Sale',        'Sale closed during a live session',                            50, 200, 'action', true],
     ['A07', 'weproject', 'LiveHost', 'Clutch Close',            'Converted a hesitant buyer during a live session',             15, 200, 'action', true],
@@ -564,15 +556,11 @@ function buildMissionLog(ss) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab 10: Crystal_War  (tower state; weekly net is computed, not stored)*/
+/* Tab 10: Crystal_War  (LEGACY — unused by the World Boss API)        */
 /* ------------------------------------------------------------------ */
 
 function buildCrystalWar(ss) {
   var headers = ['season', 'current_week_no', 'week_start', 'wp_towers', 'wl_towers', 'crystal_broken', 'lord_double_side', 'lord_double_date'];
-
-  // Live weekly net (the "rope" position) is NOT stored — the API computes
-  // it on the fly from EXP_Log. This row only tracks the discrete, already-
-  // settled tower state. GM advances current_week_no via lockWeek (Phase 2).
   var rows = [[currentMonthStr(), 1, mondayOfThisWeekStr(), 0, 0, 'none', 'none', '']];
 
   var sheet = makeSheet(ss, 'Crystal_War', headers, rows);
@@ -581,7 +569,7 @@ function buildCrystalWar(ss) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab 11: Buffs  (neutral monsters — Power Creep / Lord)               */
+/* Tab 11: Buffs  (LEGACY — unused by the World Boss API)              */
 /* ------------------------------------------------------------------ */
 
 function buildBuffs(ss) {
@@ -627,7 +615,7 @@ function buildGuide(ss) {
     { r: ['• One boss per month with 1,000,000 HP (set by boss_target in Config; rename it via boss_name).', '', '', '', ''], t: 'note' },
     { r: ['• Every RM1 of approved amount_rm = 1 damage. The whole team\'s revenue this month chips the boss HP down.', '', '', '', ''], t: 'note' },
     { r: ['• Beat the boss = the team deals a combined 1,000,000 before the month ends. That is the monthly team win.', '', '', '', ''], t: 'note' },
-    { r: ['• The boss AND everyone\'s Rank auto-reset on the 1st of each month — you do not need to touch anything.', '', '', '', ''], t: 'note' },
+    { r: ['• There is no auto rollover: run setSeasonToThisMonth to start a fresh monthly boss + reset everyone\'s Rank.', '', '', '', ''], t: 'note' },
     { r: ['• Personal Damage ranking = each player\'s approved amount_rm this month = their contribution to the boss.', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
@@ -725,16 +713,13 @@ function organizeSheet() {
     ss.moveActiveSheet(pos++);
     sh.setTabColor(plan[i][1]);
   }
-  SpreadsheetApp.getUi().alert(
-    'Tabs organized',
+  uiAlert_('Tabs organized',
     'Grouped + color-coded:\n\n' +
     'GREEN  Guide / Presets — reference\n' +
     'GOLD   EXP_Log + Achievements_Feed — fill in daily\n' +
     'RED    Redemptions + Mission_Log — approve / reject\n' +
     'GREY   Players / Shop / Actions / Missions / Crystal_War / Buffs / Config — setup\n\n' +
-    'No data changed, no tabs renamed.',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+    'No data changed, no tabs renamed.');
 }
 
 /**
@@ -773,9 +758,8 @@ function enableSmartLogging() {
     .build();
   exp.getRange(2, 5, 2000, 1).setDataValidation(rule);
 
-  SpreadsheetApp.getUi().alert('Smart logging is ON',
-    'In EXP_Log, pick a task from the "item" dropdown — category, exp and date fill in automatically. You can still type custom text for one-off items.',
-    SpreadsheetApp.getUi().ButtonSet.OK);
+  uiAlert_('Smart logging is ON',
+    'In EXP_Log, pick a task from the "item" dropdown — category, exp and date fill in automatically. You can still type custom text for one-off items.');
 }
 
 /**
@@ -807,15 +791,15 @@ function onEdit(e) {
 }
 
 /**
- * Loads a demo dataset that showcases every feature.
+ * Loads a demo dataset (WeProject only) that showcases the boss + rankings.
  * REPLACES the contents of EXP_Log + Achievements_Feed (keeps everything else).
- * Run THIS function. Delete the rows afterwards to go back to a clean sheet.
+ * Delete the rows afterwards to go back to a clean sheet.
  */
 function loadDemoData() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var exp = ss.getSheetByName('EXP_Log');
   var feed = ss.getSheetByName('Achievements_Feed');
-  if (!exp || !feed) { SpreadsheetApp.getUi().alert('Run setupWeprojectLegends or migrateExistingSheetToV5_1 first.'); return; }
+  if (!exp || !feed) { uiAlert_('Setup needed', 'Run setupWeprojectLegends or migrateExistingSheetToV5_1 first.'); return; }
 
   var d = new Date();
   function at(h, m) { var x = new Date(); x.setHours(h, m, 0, 0); return x; }
@@ -857,172 +841,8 @@ function loadDemoData() {
 
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
 
-  SpreadsheetApp.getUi().alert('Demo data loaded!',
-    'EXP_Log + Achievements_Feed populated. Personal Damage and this week\'s Crystal War rope will reflect it once Api.gs (Phase 2) reads the new amount_rm/category shape.',
-    SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-/**
- * FULL CRYSTAL WAR DEMO — seeds a Wellous enemy team + both sides' revenue so
- * the Crystal War, Lane Matchups and TV broadcast all light up with a real fight.
- *
- * What it does (run THIS function):
- *   • Appends 8 Wellous players (P101–P108, team=wellous) if not already there.
- *   • REPLACES EXP_Log + Achievements_Feed with a dated-today dataset for BOTH teams.
- *   • Result this week: WeProject ~779k vs Wellous ~620k → rope leans WeProject,
- *     with one KO on the board (Nizam 2× Bella). Delete the rows to reset.
- *
- * Does NOT touch your real WeProject players / PINs / Config.
- */
-function loadDemoWar() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var playersSheet = ss.getSheetByName('Players');
-  var exp = ss.getSheetByName('EXP_Log');
-  var feed = ss.getSheetByName('Achievements_Feed');
-  if (!playersSheet || !exp || !feed) {
-    SpreadsheetApp.getUi().alert('Run setupWeprojectLegends or migrateExistingSheetToV5_1 first.');
-    return;
-  }
-
-  var d = new Date();
-  function at(h, m) { var x = new Date(); x.setHours(h, m, 0, 0); return x; }
-
-  // 1. Ensure the Wellous roster exists (idempotent, header-mapped so column order can't drift)
-  var pHeaders = playersSheet.getRange(1, 1, 1, playersSheet.getLastColumn()).getValues()[0];
-  var col = {};
-  pHeaders.forEach(function (h, i) { col[h] = i; });
-  var existingIds = {};
-  getRows('Players').forEach(function (p) { existingIds[p.player_id] = true; });
-
-  var wellous = WELLOUS_ROSTER;
-  var toAppend = [];
-  wellous.forEach(function (w) {
-    if (existingIds[w[0]]) return;
-    var row = [];
-    for (var i = 0; i < pHeaders.length; i++) row.push('');
-    row[col['player_id']] = w[0];
-    row[col['team']]      = 'wellous';
-    row[col['name']]      = w[1];
-    row[col['role']]      = w[2];
-    if (col['avatar'] != null) row[col['avatar']] = w[3];
-    row[col['active']]    = true;
-    toAppend.push(row);
-  });
-  if (toAppend.length) {
-    playersSheet.getRange(playersSheet.getLastRow() + 1, 1, toAppend.length, pHeaders.length).setValues(toAppend);
-  }
-
-  // 2. Rewrite EXP_Log with both teams' revenue (dated today = inside this week)
-  if (exp.getLastRow() > 1) exp.getRange(2, 1, exp.getLastRow() - 1, 9).clearContent();
-  // log_id, date, player_id, category, item, exp, amount_rm, approved, note
-  var expRows = [
-    // --- WeProject (~779,400) ---
-    ['', d, 'P002', 'action', 'Closed RM 212,300 in ad revenue', 4200, 212300, true, ''],
-    ['', d, 'P009', 'action', 'Live session drove RM 154,200', 3700, 154200, true, ''],
-    ['', d, 'P003', 'action', 'Closed RM 128,800 campaign', 5600, 128800, true, ''],
-    ['', d, 'P004', 'action', 'RM 88,700 in sales', 2100, 88700, true, ''],
-    ['', d, 'P010', 'action', 'Live RM 64,200', 1200, 64200, true, ''],
-    ['', d, 'P006', 'action', 'RM 50,000 campaign', 1500, 50000, true, ''],
-    ['', d, 'P007', 'action', 'RM 41,200 in sales', 900, 41200, true, ''],
-    ['', d, 'P008', 'action', 'RM 40,000 sales', 700, 40000, true, ''],
-    ['', d, 'P014', 'achievement', 'Winning Creative #A-114', 80, '', true, ''],
-    ['', d, 'P014', 'achievement', 'Winning Creative #A-120', 80, '', true, ''],
-    ['', d, 'P014', 'action', 'High CTR Creative #B-2', 40, '', true, ''],
-    ['', d, 'P016', 'achievement', 'Winning Creative #C-31', 80, '', true, ''],
-    ['', d, 'P016', 'action', 'High CTR Creative #C-9', 40, '', true, ''],
-    ['', d, 'P015', 'action', 'High CTR Creative #D-5', 40, '', true, ''],
-    ['', d, 'P002', 'achievement', 'First order of the day (First Blood)', 10, '', true, ''],
-    ['', d, 'P002', 'mvp', 'Daily MVP', 50, '', true, ''],
-    ['', d, 'P002', 'mission', 'Publish ≥1 ad', 10, '', true, ''],
-    // --- Wellous sales (~620,000; only Salespeople earn revenue) ---
-    ['', d, 'P101', 'action', 'Closed RM 180,000 in sales', 3600, 180000, true, ''],
-    ['', d, 'P102', 'action', 'RM 150,000 in sales', 3000, 150000, true, ''],
-    ['', d, 'P103', 'action', 'RM 120,000 in sales', 2400, 120000, true, ''],
-    ['', d, 'P104', 'action', 'RM 100,000 in sales', 2000, 100000, true, ''],
-    ['', d, 'P105', 'action', 'RM 70,000 in sales', 1400, 70000, true, '']
-  ];
-  exp.getRange(2, 1, expRows.length, 9).setValues(expRows);
-
-  // 3. Rewrite Achievements_Feed — both teams (TV mixed feed carries team badges)
-  if (feed.getLastRow() > 1) feed.getRange(2, 1, feed.getLastRow() - 1, 6).clearContent();
-  // timestamp, player_id, tag, icon, description, exp
-  var feedRows = [
-    [at(9, 12),  'P009', 'FIRST BLOOD', '⚔️', 'First order of the day', 10],
-    [at(10, 30), 'P101', 'FIRST BLOOD', '⚔️', 'Enemy draws first blood', 10],
-    [at(11, 47), 'P014', 'WINNING CREATIVE', '🎯', 'Creative #A-114 hit 10 purchases', 80],
-    [at(14, 3),  'P002', 'DOUBLE KILL', '⚔️⚔️', '10 purchases in a single day', 20],
-    [at(15, 26), 'P015', 'ASSIST', '🤝', 'Helped Azim re-cut a live ad', 15],
-    [at(16, 15), 'P105', 'SAVAGE', '💀', 'Enemy live-closing streak', 60],
-    [at(17, 51), 'P002', 'SAVAGE', '💀', '3-day ROAS target streak', 60]
-  ];
-  feed.getRange(2, 1, feedRows.length, 6).setValues(feedRows);
-
-  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
-
-  SpreadsheetApp.getUi().alert('Crystal War demo loaded!',
-    'Wellous team + both sides\' revenue seeded. Within ~60s:\n' +
-    '• Crystal War rope leans WeProject (~779k vs ~620k)\n' +
-    '• Lane Matchups fill in, with one KO (Nizam 2× Bella)\n' +
-    '• TV mixed feed shows both teams\n\n' +
-    'Open the app and /tv to see it. Delete the added rows to reset.',
-    SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-/**
- * Writes the real Wellous team into the Players tab (P101–P108).
- * Updates rows that already exist (e.g. the demo names) instead of duplicating,
- * and makes sure the role dropdown allows "Salesperson". Run THIS function.
- * Their PINs and daily missions are set up separately (Players tab / Missions tab).
- */
-function setWellousRoster() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var playersSheet = ss.getSheetByName('Players');
-  if (!playersSheet) { SpreadsheetApp.getUi().alert('Players tab not found.'); return; }
-
-  var pHeaders = playersSheet.getRange(1, 1, 1, playersSheet.getLastColumn()).getValues()[0];
-  var col = {};
-  pHeaders.forEach(function (h, i) { col[h] = i; });
-
-  applyDropdown(playersSheet, col['role'] + 1, SMALL_ROWS, PLAYER_ROLES); // allow Salesperson
-
-  var lastRow = playersSheet.getLastRow();
-  var data = lastRow > 1 ? playersSheet.getRange(2, 1, lastRow - 1, pHeaders.length).getValues() : [];
-  var rowIndexById = {};
-  for (var i = 0; i < data.length; i++) rowIndexById[data[i][col['player_id']]] = i + 2;
-
-  var added = [];
-  WELLOUS_ROSTER.forEach(function (w) {
-    var existingRow = rowIndexById[w[0]];
-    var rowVals;
-    if (existingRow) {
-      rowVals = data[existingRow - 2];
-    } else {
-      rowVals = [];
-      for (var k = 0; k < pHeaders.length; k++) rowVals.push('');
-    }
-    rowVals[col['player_id']] = w[0];
-    rowVals[col['team']] = 'wellous';
-    rowVals[col['name']] = w[1];
-    rowVals[col['role']] = w[2];
-    if (col['avatar'] != null) rowVals[col['avatar']] = w[3];
-    rowVals[col['active']] = true;
-    if (existingRow) {
-      playersSheet.getRange(existingRow, 1, 1, pHeaders.length).setValues([rowVals]);
-    } else {
-      playersSheet.appendRow(rowVals);
-      added.push(w[1]);
-    }
-  });
-
-  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'roster']); } catch (e) {}
-
-  SpreadsheetApp.getUi().alert('Wellous roster set',
-    'Written to the Players tab (P101–P108):\n\n' +
-    'Salesperson: Yodaa, Vicky, Lilian, Janice, Fish\n' +
-    'Editor: Sin Huey, Wei Hao\n' +
-    'Marketer: Billy\n\n' +
-    'Next: give each a 4-digit PIN in the Players tab, and add their daily missions in the Missions tab (role = Salesperson / Editor / Marketer, team = wellous).',
-    SpreadsheetApp.getUi().ButtonSet.OK);
+  uiAlert_('Demo data loaded!',
+    'EXP_Log + Achievements_Feed populated. Within ~60s the World Boss HP and Damage ranking will reflect it.');
 }
 
 /**
@@ -1030,6 +850,7 @@ function setWellousRoster() {
  *   • Refreshes the Guide tab to the World Boss rules.
  *   • Adds Config rows boss_name / boss_target if missing (keeps your value if
  *     you already set one). Default monthly goal = 1,000,000.
+ *   • Pins the season window (season_start/season_end) to THIS month.
  * Run THIS function once after pasting the updated Api.gs + Code.gs.
  */
 function applyWorldBossRules() {
@@ -1040,13 +861,12 @@ function applyWorldBossRules() {
   setConfigValue('season_end', monthEndStr());
   buildGuide(ss);
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
-  SpreadsheetApp.getUi().alert('World Boss rules applied',
+  uiAlert_('World Boss rules applied',
     'Guide tab refreshed for the World Boss model.\n\n' +
     'Config now has boss_name + boss_target (default 1,000,000) and the season is set to THIS month (' +
     monthStartStr() + ' → ' + monthEndStr() + '). Edit boss_target to change the goal, or boss_name to rename the boss.\n\n' +
     'There is NO auto month rollover — run setSeasonToThisMonth whenever you want to start a fresh boss.\n\n' +
-    'Remember to Deploy → New version so the live API picks up the new Api.gs.',
-    SpreadsheetApp.getUi().ButtonSet.OK);
+    'Remember to Deploy → New version so the live API picks up the new Api.gs.');
 }
 
 /**
@@ -1059,10 +879,9 @@ function setSeasonToThisMonth() {
   setConfigValue('season_start', monthStartStr());
   setConfigValue('season_end', monthEndStr());
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
-  SpreadsheetApp.getUi().alert('Season set to this month',
+  uiAlert_('Season set to this month',
     'season_start = ' + monthStartStr() + '\nseason_end = ' + monthEndStr() + '\n\n' +
-    "The boss HP and everyone's Rank now count THIS month's revenue/EXP only.",
-    SpreadsheetApp.getUi().ButtonSet.OK);
+    "The boss HP and everyone's Rank now count THIS month's revenue/EXP only.");
 }
 
 /** Append a Config key/value only if the key isn't already there (preserves GM edits). */
@@ -1113,7 +932,7 @@ function simplifySheet() {
     if (sh) { sh.setTabColor('#555555'); sh.hideSheet(); }
   });
 
-  SpreadsheetApp.getUi().alert('Sheet simplified',
+  uiAlert_('Sheet simplified',
     'The GM now sees only the day-to-day tabs:\n\n' +
     'HOME — start here\n' +
     'EXP_Log — record points & sales\n' +
@@ -1123,8 +942,7 @@ function simplifySheet() {
     'Players — people & PINs\n' +
     'Guide — full rules reference\n\n' +
     'Setup tabs (Shop, Actions, Missions, Config, Crystal_War, Buffs, Presets) are HIDDEN, not deleted. ' +
-    'Unhide them anytime: bottom-left ☰ "All Sheets" icon, or View menu → Hidden sheets.',
-    SpreadsheetApp.getUi().ButtonSet.OK);
+    'Unhide them anytime: bottom-left ☰ "All Sheets" icon, or View menu → Hidden sheets.');
 }
 
 /** Plain-English one-page instructions shown as the first tab. */
