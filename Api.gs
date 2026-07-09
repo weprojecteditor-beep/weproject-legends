@@ -36,12 +36,12 @@
  *      goldPendingAdjustment + goldRealValue.
  *   3. Rank uses SEASON (calendar month) EXP; Level uses ALL-TIME EXP.
  *   4. Daily cap is a reference value only — never enforced/rejected here.
- *   5. World Boss: one monthly boss with boss_target HP (Config, default
- *      1,000,000). Damage = approved amount_rm summed across WeProject for
- *      the CURRENT calendar month; the boss is beaten when damage >= target.
- *      Both the boss and Rank use the live calendar month, so both auto-reset
- *      on the 1st with no GM action. Each player's "damage" in the ranking is
- *      the same month-scoped amount_rm.
+ *   5. World Boss: one boss with boss_target HP (Config, default 1,000,000).
+ *      Damage = approved amount_rm summed across WeProject over the active
+ *      season window (Config season_start..season_end, set to "this month").
+ *      Beaten when damage >= target. There is NO automatic month rollover —
+ *      the GM starts a fresh month by running setSeasonToThisMonth. Rank uses
+ *      the same window; each player's ranking "damage" is that window's RM.
  *   6. Pace/bounty eligibility is only FLAGGED (from join_date / month EXP)
  *      — the API never grants EXP or badges automatically.
  *   7. PIN failures are rate-limited via CacheService (Config
@@ -151,15 +151,33 @@ function monthBoundsNow() {
   };
 }
 
+/**
+ * The active season window. Uses Config season_start/season_end (set to "this
+ * month" by the GM) so there is NO automatic month rollover — the GM advances
+ * it manually by running setSeasonToThisMonth. Falls back to the live calendar
+ * month only if those Config cells are blank.
+ */
+function seasonWindow(cfg) {
+  var start = dateStr(cfg.season_start), end = dateStr(cfg.season_end);
+  if (!start || !end) { var mb = monthBoundsNow(); start = mb.start; end = mb.end; }
+  return { start: start, end: end };
+}
+
+/** "July 2026" label from a yyyy-MM-dd string. */
+function monthLabel(dateString) {
+  var d = new Date(dateString);
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, tz(), 'MMMM yyyy');
+}
+
 function getBossState(cfg, players, expApproved) {
-  var mb = monthBoundsNow();
+  var sw = seasonWindow(cfg);
   var target = cfgInt(cfg.boss_target, 1000000);
-  var dealt = sumTeamRevenueInRange(players, expApproved, 'weproject', mb.start, mb.end);
+  var dealt = sumTeamRevenueInRange(players, expApproved, 'weproject', sw.start, sw.end);
   var today = todayStr();
   var todayDamage = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
   return {
     name: String(cfg.boss_name || 'REVENUE OVERLORD'),
-    month: mb.label,
+    month: monthLabel(sw.start),
     target: target,
     dealt: dealt,
     hpRemaining: Math.max(0, target - dealt),
@@ -167,8 +185,8 @@ function getBossState(cfg, players, expApproved) {
     dealtPct: target > 0 ? Math.min(1, Math.max(0, dealt / target)) : 0,           // fraction of HP chipped
     defeated: dealt >= target,
     todayDamage: todayDamage,
-    seasonStart: mb.start,
-    seasonEnd: mb.end
+    seasonStart: sw.start,
+    seasonEnd: sw.end
   };
 }
 
@@ -316,12 +334,12 @@ function laneMatchupsForTeam(neutralList, team) {
 
 /** This team's players ranked by season revenue (amount_rm) — the "attack" board. */
 function getDamageRanking(players, expApproved, cfg, levelTh, team) {
-  var mb = monthBoundsNow();
-  var seasonStart = mb.start, seasonEnd = mb.end; // Rank = this calendar month, self-resets on the 1st
+  var sw = seasonWindow(cfg);
+  var seasonStart = sw.start, seasonEnd = sw.end; // boss/Rank window = configured season (this month)
   var dmg = {}, seasonExp = {}, allExp = {};
   expApproved.forEach(function (r) {
     var d = dateStr(r.date);
-    if (d >= mb.start && d <= mb.end) dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm); // damage on this month's boss
+    if (d >= seasonStart && d <= seasonEnd) dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm); // damage on this month's boss
     allExp[r.player_id] = (allExp[r.player_id] || 0) + num(r.exp);
     if (d >= seasonStart && d <= seasonEnd) seasonExp[r.player_id] = (seasonExp[r.player_id] || 0) + num(r.exp);
   });
@@ -547,8 +565,8 @@ function getPlayer(id, pin) {
 
   var cfg = getConfig();
   var levelTh = buildLevelThresholds(cfg);
-  var mb = monthBoundsNow();
-  var seasonStart = mb.start, seasonEnd = mb.end; // Rank window = current calendar month
+  var sw = seasonWindow(cfg);
+  var seasonStart = sw.start, seasonEnd = sw.end; // Rank window = configured season (this month)
   var today = todayStr();
 
   var mine = getRows('EXP_Log').filter(function (r) { return r.player_id === id && isApproved(r); });
@@ -649,8 +667,8 @@ function computePaceEligibility(p, mine, cfg, players) {
     out.push({ type: 'pace', label: 'Fast Climber — Lv20 within ' + num(cfg.pace_lv20_days) + ' days', bonus: num(cfg.pace_lv20_bonus) });
   }
 
-  var mb = monthBoundsNow();
-  var earliest = findEarliestSeasonThresholdCrosser(players, num(cfg.lv15), mb.start, mb.end);
+  var sw = seasonWindow(cfg);
+  var earliest = findEarliestSeasonThresholdCrosser(players, num(cfg.lv15), sw.start, sw.end);
   if (earliest && earliest.playerId === p.player_id) {
     out.push({ type: 'bounty', label: 'First to Lv15 season EXP this season', bonus: num(cfg.bounty_lv15) });
   }

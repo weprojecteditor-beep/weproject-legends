@@ -1036,12 +1036,32 @@ function applyWorldBossRules() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   ensureConfigRow_(ss, 'boss_name', 'Revenue Overlord');
   ensureConfigRow_(ss, 'boss_target', 1000000);
+  setConfigValue('season_start', monthStartStr()); // pin the boss + Rank window to THIS month
+  setConfigValue('season_end', monthEndStr());
   buildGuide(ss);
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
   SpreadsheetApp.getUi().alert('World Boss rules applied',
     'Guide tab refreshed for the World Boss model.\n\n' +
-    'Config now has boss_name + boss_target (default 1,000,000). ' +
-    'Edit boss_target in the Config tab to change the monthly goal, or boss_name to rename the boss.\n\n' +
+    'Config now has boss_name + boss_target (default 1,000,000) and the season is set to THIS month (' +
+    monthStartStr() + ' → ' + monthEndStr() + '). Edit boss_target to change the goal, or boss_name to rename the boss.\n\n' +
+    'There is NO auto month rollover — run setSeasonToThisMonth whenever you want to start a fresh boss.\n\n' +
     'Remember to Deploy → New version so the live API picks up the new Api.gs.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * Manually start a fresh month: sets season_start/season_end to the current
+ * month, which resets the boss HP and everyone's Rank to count only this
+ * month's rows. Run THIS on the 1st of any month you want to reset (there is
+ * no automatic rollover, by design).
+ */
+function setSeasonToThisMonth() {
+  setConfigValue('season_start', monthStartStr());
+  setConfigValue('season_end', monthEndStr());
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
+  SpreadsheetApp.getUi().alert('Season set to this month',
+    'season_start = ' + monthStartStr() + '\nseason_end = ' + monthEndStr() + '\n\n' +
+    "The boss HP and everyone's Rank now count THIS month's revenue/EXP only.",
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
