@@ -1145,18 +1145,18 @@ function buildHomeTab(ss) {
     { t: 'kv', a: 'Achievements_Feed', b: 'Highlights for the TV screen.' },
     { t: 'kv', a: 'Redemptions', b: 'Shop redeems waiting for your approval.' },
     { t: 'kv', a: 'Mission_Log', b: 'Missions players submitted, waiting for approval.' },
-    { t: 'kv', a: 'Players', b: 'Everyone on both teams + their 4-digit PINs.' },
-    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how Crystal War works.' },
+    { t: 'kv', a: 'Players', b: 'Everyone on the team + their 4-digit PINs.' },
+    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how the World Boss works.' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '🤖 AUTOMATIC — NO ACTION NEEDED', b: '' },
-    { t: 'step', a: 'Crystal War, Neutral Objectives (the revenue race), and Coin Snatcher raids all run by themselves from the sales you approve in EXP_Log. Never hand-edit the Crystal_War / Buffs / Steals tabs.', b: '' },
+    { t: 'step', a: 'The World Boss HP, the Damage ranking, and everyone\'s Gold all update by themselves from the rows you approve in EXP_Log — nothing to hand-edit. (To start a fresh monthly boss, run setSeasonToThisMonth in the Apps Script editor.)', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '⚙️ SETUP TABS ARE HIDDEN', b: '' },
     { t: 'step', a: 'Shop / Actions / Missions / Config / Presets are hidden to keep things clean. To change prices, point values, missions, or the season, show them via the ☰ "All Sheets" icon (bottom-left) or View → Hidden sheets.', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '✅ GOLDEN RULES', b: '' },
     { t: 'step', a: '• Nothing counts until you tick "approved".', b: '' },
-    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it drives the Crystal War + Damage board.', b: '' },
+    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it is the damage dealt to the World Boss + the Damage board.', b: '' },
     { t: 'step', a: '• To fix a mistake: add a new row with a NEGATIVE number. Never delete history.', b: '' }
   ];
 
