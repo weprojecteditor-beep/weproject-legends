@@ -56,44 +56,52 @@ export default function TvApp() {
   );
 }
 
-function BossScreen({ boss }) {
-  const target = boss.target || 1000000;
-  const dealt = boss.dealt || 0;
-  const hpPct = boss.hpPct != null ? boss.hpPct : Math.max(0, (target - dealt) / target);
-  const defeated = boss.defeated || dealt >= target;
-  const col = defeated ? C.green : C.hp;
+function TvStage({ s }) {
+  const cleared = s.down;
+  const active = s.active;
+  const accent = s.isCrystal ? C.cyan : C.gold;
+  const col = cleared ? C.green : active ? accent : C.dimmer;
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-      <div style={{ fontSize: "1.4vw", fontWeight: 800, letterSpacing: "0.3em", color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>◆ WORLD BOSS · {boss.month || ""}</div>
-      <div className="bossbob" style={{ fontSize: "22vh", lineHeight: 1, margin: "1vh 0", filter: `drop-shadow(0 0 5vh ${col})` }}>{defeated ? "💀" : "🐲"}</div>
-      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "4.4vw", color: col, textShadow: `0 0 3vh ${col}`, textTransform: "uppercase", lineHeight: 1 }}>{boss.name || "Revenue Overlord"}</div>
+    <div style={{ flex: s.isCrystal ? 1.35 : 1, clipPath: CLIP_SM, padding: "3vh 1.4vw 2.4vh", textAlign: "center",
+      background: cleared ? "#08160F" : active ? `${accent}12` : C.panelSoft,
+      border: `2px solid ${cleared ? C.green + "66" : active ? accent : C.line}`, opacity: cleared ? 0.92 : active ? 1 : 0.55 }}>
+      <div className={s.isCrystal && !cleared ? "cpz" : ""} style={{ fontSize: s.isCrystal ? "12vh" : "9vh", lineHeight: 1, color: col,
+        filter: cleared ? "grayscale(1)" : `drop-shadow(0 0 3vh ${col})` }}>{cleared ? "💥" : s.icon}</div>
+      <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "1.8vw", color: col, margin: "1.4vh 0 0.6vh", textDecoration: cleared ? "line-through" : "none" }}>{s.name}</div>
+      <div style={{ transform: "skewX(-8deg)", height: "2.4vh", background: "#02040D", border: `2px solid ${col}55`, borderRadius: 4, overflow: "hidden", boxShadow: "inset 0 0 1.5vh #000" }}>
+        <div style={{ height: "100%", width: `${Math.max(0, (s.pct || 0) * 100)}%`, background: cleared ? "transparent" : `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: cleared ? "none" : `0 0 1.6vh ${col}`, transition: "width 1.1s cubic-bezier(.2,.8,.3,1)" }} />
+      </div>
+      <div style={{ fontSize: "1.1vw", marginTop: "1vh", color: cleared ? C.green : C.dim, fontWeight: cleared ? 800 : 400, fontFamily: "'Chakra Petch',sans-serif" }}>{cleared ? "CLEARED" : fmt(s.remaining) + " HP"}</div>
+    </div>
+  );
+}
+
+function BossScreen({ boss }) {
+  const stages = boss.stages || [];
+  const dealt = boss.dealt || 0;
+  const target = boss.target || 1000000;
+  const defeated = boss.defeated;
+  const stageNo = Math.min((boss.stageIndex ?? 0) + 1, 3);
+  const glow = defeated ? C.green : C.cyan;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+      <div style={{ textAlign: "center", marginBottom: "2.5vh" }}>
+        <div style={{ fontSize: "1.3vw", fontWeight: 800, letterSpacing: "0.3em", color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>◆ MONTHLY GAUNTLET · {boss.month || ""} · STAGE {defeated ? 3 : stageNo}/3</div>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "4vw", color: glow, textShadow: `0 0 3vh ${glow}`, textTransform: "uppercase", lineHeight: 1.05 }}>{boss.name || "Crystal Citadel"}</div>
+      </div>
 
       {defeated && (
-        <div style={{ margin: "2vh 0", padding: "1vh 3vw", clipPath: CLIP_SM, background: `${C.gold}22`, border: `2px solid ${C.gold}`, fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "2.2vw", color: C.gold, textShadow: `0 0 2vh ${C.gold}` }}>
-          🏆 BOSS DEFEATED — WEPROJECT WINS!
+        <div style={{ alignSelf: "center", margin: "0 0 2vh", padding: "1vh 3vw", clipPath: CLIP_SM, background: `${C.gold}22`, border: `2px solid ${C.gold}`, fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "2.2vw", color: C.gold, textShadow: `0 0 2vh ${C.gold}` }}>
+          🏆 CRYSTAL SHATTERED — WEPROJECT CLEARS THE MONTH!
         </div>
       )}
 
-      {/* HP bar */}
-      <div style={{ width: "70vw", marginTop: "3vh" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.2vw", fontWeight: 800, marginBottom: "0.8vh", fontFamily: "'Chakra Petch',sans-serif" }}>
-          <span style={{ color: col }}>BOSS HP</span>
-          <span style={{ color: C.dim }}>{fmt(boss.hpRemaining != null ? boss.hpRemaining : Math.max(0, target - dealt))} / {fmt(target)} LEFT</span>
-        </div>
-        <div style={{ position: "relative", transform: "skewX(-8deg)", height: "4vh", background: "#02040D", border: `2px solid ${col}66`, borderRadius: 4, overflow: "hidden", boxShadow: "inset 0 0 2vh #000" }}>
-          <div style={{ height: "100%", width: `${Math.max(0, hpPct * 100)}%`, background: `linear-gradient(90deg, ${col}, ${defeated ? C.green : "#FF6B7F"})`, boxShadow: `0 0 2vh ${col}`, transition: "width 1.1s cubic-bezier(.2,.8,.3,1)" }} />
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "skewX(8deg)", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "1.6vw", color: "#fff", textShadow: "0 1px 4px #000" }}>{Math.round(hpPct * 100)}%</div>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2.5vh" }}>
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: "1vw", color: C.dimmer, letterSpacing: "0.1em" }}>DAMAGE DEALT</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "3vw", color: C.gold, textShadow: `0 0 2vh ${C.gold}66` }}>RM {fmt(dealt)}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "1vw", color: C.dimmer, letterSpacing: "0.1em" }}>TODAY</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: "3vw", color: C.cyan, textShadow: `0 0 2vh ${C.cyan}66` }}>+{fmt(boss.todayDamage || 0)}</div>
-          </div>
-        </div>
+      <div style={{ display: "flex", gap: "2.5vw", padding: "0 3vw", alignItems: "stretch" }}>
+        {stages.map((s, i) => <TvStage key={i} s={s} />)}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: "3vh", fontSize: "1.4vw", color: C.dim }}>
+        Total damage <b style={{ color: C.gold }}>RM {fmt(dealt)}</b> / {fmt(target)} &nbsp;·&nbsp; Today <b style={{ color: C.cyan }}>+{fmt(boss.todayDamage || 0)}</b>
       </div>
     </div>
   );

@@ -611,12 +611,12 @@ function buildGuide(ss) {
     { r: ['approved', 'Tick the checkbox to make the row count. Un-ticked rows are ignored by the app.', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
-    { r: ['WORLD BOSS — HOW IT WORKS', '', '', '', ''], t: 'section' },
-    { r: ['• One boss per month with 1,000,000 HP (set by boss_target in Config; rename it via boss_name).', '', '', '', ''], t: 'note' },
-    { r: ['• Every RM1 of approved amount_rm = 1 damage. The whole team\'s revenue this month chips the boss HP down.', '', '', '', ''], t: 'note' },
-    { r: ['• Beat the boss = the team deals a combined 1,000,000 before the month ends. That is the monthly team win.', '', '', '', ''], t: 'note' },
-    { r: ['• There is no auto rollover: run setSeasonToThisMonth to start a fresh monthly boss + reset everyone\'s Rank.', '', '', '', ''], t: 'note' },
-    { r: ['• Personal Damage ranking = each player\'s approved amount_rm this month = their contribution to the boss.', '', '', '', ''], t: 'note' },
+    { r: ['MONTHLY GAUNTLET — HOW IT WORKS', '', '', '', ''], t: 'section' },
+    { r: ['• Each month is a 3-stage gauntlet: Tower I → Tower II → Crystal (the final boss). Total HP = boss_target (default 1,000,000), split 30% / 30% / 40%.', '', '', '', ''], t: 'note' },
+    { r: ['• Every RM1 of approved amount_rm = 1 damage. Damage breaks Tower I first, then Tower II, then shatters the Crystal.', '', '', '', ''], t: 'note' },
+    { r: ['• Clear all 3 stages = the team beats the month. (Rename the citadel via boss_name; size each stage via base_tower1_hp / base_tower2_hp / base_crystal_hp, else it auto-splits boss_target.)', '', '', '', ''], t: 'note' },
+    { r: ['• There is no auto rollover: run setSeasonToThisMonth to start a fresh gauntlet + reset everyone\'s Rank.', '', '', '', ''], t: 'note' },
+    { r: ['• Personal Damage ranking = each player\'s approved amount_rm this month = their contribution to the citadel.', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
     { r: ['HERO CLASS (locked by role, cosmetic choice within it)', '', '', '', ''], t: 'section' },

@@ -116,11 +116,15 @@ function Splash({ onEnter }) {
         marginBottom: 4, animation: "fadeIn .8s ease .1s both" }}>LEAGUE OF LEGENDS</div>
       <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.4em", color: C.dim, fontFamily: "'Chakra Petch',sans-serif", marginBottom: 16, animation: "fadeIn .8s ease .2s both" }}>SEASON 1 · 2026</div>
 
-      {/* The boss looms; our heroes rally below */}
+      {/* The Crystal Citadel looms; our heroes rally below */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8 }}>
-        <div className="floaty" style={{ fontSize: 92, filter: `drop-shadow(0 0 30px ${C.hp})`, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .5s both" }}>🐲</div>
-        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 16, color: C.hp, letterSpacing: "0.06em", textShadow: `0 0 22px ${C.hp}`, animation: "fadeIn .8s ease .7s both" }}>THE REVENUE OVERLORD</div>
-        <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em", marginBottom: 10, animation: "fadeIn .8s ease .8s both" }}>1,000,000 HP</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, animation: "vsPop .5s cubic-bezier(.2,1.6,.4,1) .5s both" }}>
+          <span style={{ fontSize: 40, filter: `drop-shadow(0 0 14px ${C.gold})` }}>🗼</span>
+          <span className="floaty" style={{ fontSize: 74, filter: `drop-shadow(0 0 30px ${C.cyan})` }}>💎</span>
+          <span style={{ fontSize: 40, filter: `drop-shadow(0 0 14px ${C.gold})` }}>🗼</span>
+        </div>
+        <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 16, color: C.cyan, letterSpacing: "0.06em", textShadow: `0 0 22px ${C.cyan}`, marginTop: 6, animation: "fadeIn .8s ease .7s both" }}>THE CRYSTAL CITADEL</div>
+        <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.2em", marginBottom: 10, animation: "fadeIn .8s ease .8s both" }}>2 TOWERS · 1 CRYSTAL · 1,000,000 HP</div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
           <img className="crystalL" src="/avatars/marksman.png" alt="" style={{ height: 96, filter: `drop-shadow(0 0 22px ${C.cyan})`, animation: "slamL .6s cubic-bezier(.2,1.4,.4,1) .9s both" }} />
           <img className="crystalR" src="/avatars/fighter.png" alt="" style={{ height: 96, filter: `drop-shadow(0 0 22px ${C.cyan})`, animation: "slamR .6s cubic-bezier(.2,1.4,.4,1) .9s both" }} />
@@ -130,8 +134,8 @@ function Splash({ onEnter }) {
       </div>
 
       <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.3em", margin: "12px 0 6px",
-        background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "fadeIn .8s ease 1.2s both" }}>⚔ SLAY THE BOSS ⚔</div>
-      <div style={{ fontSize: 10, color: C.dim, marginBottom: 22, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Every RM of revenue is damage · beat it before month-end</div>
+        background: GOLD_GRAD, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "fadeIn .8s ease 1.2s both" }}>⚔ BREACH THE CITADEL ⚔</div>
+      <div style={{ fontSize: 10, color: C.dim, marginBottom: 22, textAlign: "center", animation: "fadeIn .8s ease 1.4s both" }}>Break Tower I → Tower II → shatter the Crystal before month-end</div>
       <button onClick={onEnter} style={{ clipPath: CLIP_SM, padding: "14px 44px", border: "none", cursor: "pointer",
         background: GOLD_GRAD, color: "#0A0F28", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 14, letterSpacing: "0.15em",
         animation: "fadeIn .8s ease 1.6s both, glowPulse 2s ease 2s infinite" }}>ENTER THE BATTLEFIELD</button>

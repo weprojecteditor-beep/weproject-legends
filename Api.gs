@@ -167,22 +167,67 @@ function monthLabel(dateString) {
   return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, tz(), 'MMMM yyyy');
 }
 
+/** Cascade damage across ordered HP segments: fills seg 0, then 1, then 2. */
+function segRemain(dealt, segs) {
+  var d = dealt, out = [];
+  for (var i = 0; i < segs.length; i++) { out.push(Math.max(0, segs[i] - d)); d = Math.max(0, d - segs[i]); }
+  return out;
+}
+
+/**
+ * The 3 stages of the monthly gauntlet: [Tower I, Tower II, Crystal].
+ * Uses explicit Config base_tower1_hp/base_tower2_hp/base_crystal_hp if all set,
+ * otherwise splits boss_target 30% / 30% / 40%.
+ */
+function bossSegments(cfg, target) {
+  var t1 = cfgInt(cfg.base_tower1_hp, 0), t2 = cfgInt(cfg.base_tower2_hp, 0), cr = cfgInt(cfg.base_crystal_hp, 0);
+  if (t1 > 0 && t2 > 0 && cr > 0) return [t1, t2, cr];
+  var a = Math.round(target * 0.3);
+  return [a, a, target - 2 * a];
+}
+
 function getBossState(cfg, players, expApproved) {
   var sw = seasonWindow(cfg);
   var target = cfgInt(cfg.boss_target, 1000000);
+  var segs = bossSegments(cfg, target);
+  var totalHp = segs[0] + segs[1] + segs[2];
   var dealt = sumTeamRevenueInRange(players, expApproved, 'weproject', sw.start, sw.end);
   var today = todayStr();
   var todayDamage = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
+
+  var rem = segRemain(dealt, segs);
+  var meta = [
+    { name: 'TOWER I',  icon: '🗼' },
+    { name: 'TOWER II', icon: '🗼' },
+    { name: 'CRYSTAL',  icon: '💎' }
+  ];
+  var stageIndex = 3; // index of the stage currently under attack (3 = all cleared)
+  var stages = segs.map(function (full, i) {
+    var remaining = rem[i];
+    var down = remaining <= 0;
+    var active = !down && (i === 0 || rem[i - 1] <= 0);
+    if (!down && stageIndex === 3) stageIndex = i;
+    return {
+      name: meta[i].name, icon: meta[i].icon, isCrystal: i === 2,
+      full: full, remaining: remaining, pct: full > 0 ? remaining / full : 0,
+      down: down, active: active
+    };
+  });
+  var defeated = dealt >= totalHp;
+
   return {
-    name: String(cfg.boss_name || 'REVENUE OVERLORD'),
+    name: String(cfg.boss_name || 'CRYSTAL CITADEL'),
     month: monthLabel(sw.start),
-    target: target,
+    target: totalHp,
     dealt: dealt,
-    hpRemaining: Math.max(0, target - dealt),
-    hpPct: target > 0 ? Math.min(1, Math.max(0, (target - dealt) / target)) : 0,   // fraction of HP left (clamped 0..1)
-    dealtPct: target > 0 ? Math.min(1, Math.max(0, dealt / target)) : 0,           // fraction of HP chipped
-    defeated: dealt >= target,
+    hpRemaining: Math.max(0, totalHp - dealt),
+    hpPct: totalHp > 0 ? Math.min(1, Math.max(0, (totalHp - dealt) / totalHp)) : 0,
+    dealtPct: totalHp > 0 ? Math.min(1, Math.max(0, dealt / totalHp)) : 0,
+    defeated: defeated,
     todayDamage: todayDamage,
+    segs: segs,
+    stages: stages,
+    stageIndex: defeated ? 3 : stageIndex,
     seasonStart: sw.start,
     seasonEnd: sw.end
   };
