@@ -612,7 +612,7 @@ function buildGuide(ss) {
     { r: blank, t: 'note' },
 
     { r: ['MONTHLY GAUNTLET — HOW IT WORKS', '', '', '', ''], t: 'section' },
-    { r: ['• Each month is a 3-stage gauntlet: Tower I → Tower II → Crystal (the final boss). Total HP = boss_target (default 1,000,000), split 30% / 30% / 40%.', '', '', '', ''], t: 'note' },
+    { r: ['• Each month is a 3-stage gauntlet: Tower I → Tower II → Crystal (the final boss). Total HP = boss_target (default 1,000,000), split 30% / 40% / 30% — Tower II is the biggest wall, so breaking it is the big moment.', '', '', '', ''], t: 'note' },
     { r: ['• Every RM1 of approved amount_rm = 1 damage. Damage breaks Tower I first, then Tower II, then shatters the Crystal.', '', '', '', ''], t: 'note' },
     { r: ['• Clear all 3 stages = the team beats the month. (Rename the citadel via boss_name; size each stage via base_tower1_hp / base_tower2_hp / base_crystal_hp, else it auto-splits boss_target.)', '', '', '', ''], t: 'note' },
     { r: ['• There is no auto rollover: run setSeasonToThisMonth to start a fresh gauntlet + reset everyone\'s Rank.', '', '', '', ''], t: 'note' },

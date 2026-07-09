@@ -182,8 +182,9 @@ function segRemain(dealt, segs) {
 function bossSegments(cfg, target) {
   var t1 = cfgInt(cfg.base_tower1_hp, 0), t2 = cfgInt(cfg.base_tower2_hp, 0), cr = cfgInt(cfg.base_crystal_hp, 0);
   if (t1 > 0 && t2 > 0 && cr > 0) return [t1, t2, cr];
-  var a = Math.round(target * 0.3);
-  return [a, a, target - 2 * a];
+  // 30 / 40 / 30 — Tower II is the biggest wall (the big adrenaline break), Crystal a 30% finish
+  var tower1 = Math.round(target * 0.3), crystal = Math.round(target * 0.3);
+  return [tower1, target - tower1 - crystal, crystal];
 }
 
 function getBossState(cfg, players, expApproved) {
