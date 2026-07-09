@@ -380,7 +380,7 @@ function buildExpLog(ss) {
     'category',   // dropdown: mission/action/milestone/achievement/assist/mvp/adjust
     'item',       // free text, e.g. "Winning Creative #A114"
     'exp',        // number (can be negative for Refund clawback)
-    'amount_rm',  // RM amount for Revenue rows — damage on the World Boss + Damage board, else blank
+    'amount_rm',  // RM amount for Revenue rows — damage on the citadel + Damage board, else blank
     'approved',   // checkbox — only takes effect once ticked
     'note'        // remarks
   ];
@@ -448,11 +448,15 @@ function configDefaultRows() {
     ['season_start', monthStartStr()],
     ['season_end',   monthEndStr()],
 
-    // World Boss (monthly) — team beats it by dealing `boss_target` in approved revenue
-    ['boss_name',   'Revenue Overlord'],
+    // Monthly Gauntlet — team clears Tower I -> Tower II -> Crystal (boss_target = total HP)
+    ['boss_name',   'Crystal Citadel'],
     ['boss_target', 1000000],
+    // Optional: size each stage yourself. Leave blank to auto-split boss_target 30/40/30.
+    ['base_tower1_hp', ''],
+    ['base_tower2_hp', ''],
+    ['base_crystal_hp', ''],
 
-    // Crystal War (legacy — unused in the World Boss model, kept for reference)
+    // Legacy (unused by the World Boss model, kept for reference)
     ['towers_per_side', 3],
     ['week_reset_day',  'monday'],
     ['lock_time',        '23:59'],
@@ -597,7 +601,7 @@ function buildGuide(ss) {
 
   var blank = ['', '', '', '', ''];
   var content = [
-    { r: ['WEPROJECT LEGENDS — GM / HR DAILY ENTRY GUIDE (World Boss)', '', '', '', ''], t: 'title' },
+    { r: ['WEPROJECT LEGENDS — GM / HR DAILY ENTRY GUIDE (Monthly Gauntlet)', '', '', '', ''], t: 'title' },
     { r: blank, t: 'note' },
 
     { r: ['WHAT EACH EXP_LOG COLUMN MEANS', '', '', '', ''], t: 'section' },
@@ -607,7 +611,7 @@ function buildGuide(ss) {
     { r: ['category', 'Pick from the dropdown (7 options). See Actions/Missions tabs for the exact EXP each item is worth.', '', '', ''], t: 'note' },
     { r: ['item', 'Free-text description. For Editors, include "Winning" or "High CTR" so it counts on the Creative board.', '', '', ''], t: 'note' },
     { r: ['exp', 'Points the player earns (this is also their Gold). Can be NEGATIVE for refunds / corrections.', '', '', ''], t: 'note' },
-    { r: ['amount_rm', 'ONLY for real revenue (a sale). This is the damage that hits the World Boss AND fills the personal Damage ranking — same number, two views. Negative = refund, rolls back both.', '', '', ''], t: 'note' },
+    { r: ['amount_rm', 'ONLY for real revenue (a sale). This is the damage that hits the citadel AND fills the personal Damage ranking — same number, two views. Negative = refund, rolls back both.', '', '', ''], t: 'note' },
     { r: ['approved', 'Tick the checkbox to make the row count. Un-ticked rows are ignored by the app.', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
@@ -791,7 +795,7 @@ function onEdit(e) {
 }
 
 /**
- * Loads a demo dataset (WeProject only) that showcases the boss + rankings.
+ * Loads a demo dataset (WeProject only) that showcases the gauntlet + rankings.
  * REPLACES the contents of EXP_Log + Achievements_Feed (keeps everything else).
  * Delete the rows afterwards to go back to a clean sheet.
  */
@@ -842,36 +846,39 @@ function loadDemoData() {
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
 
   uiAlert_('Demo data loaded!',
-    'EXP_Log + Achievements_Feed populated. Within ~60s the World Boss HP and Damage ranking will reflect it.');
+    'EXP_Log + Achievements_Feed populated. Within ~60s the gauntlet stages and Damage ranking will reflect it.');
 }
 
 /**
- * Applies the World Boss ruleset to a LIVE sheet (non-destructive):
- *   • Refreshes the Guide tab to the World Boss rules.
- *   • Adds Config rows boss_name / boss_target if missing (keeps your value if
- *     you already set one). Default monthly goal = 1,000,000.
+ * Applies the ruleset to a LIVE sheet (non-destructive):
+ *   • Refreshes the Guide tab.
+ *   • Adds Config rows boss_name / boss_target / base_tower*_hp if missing.
  *   • Pins the season window (season_start/season_end) to THIS month.
  * Run THIS function once after pasting the updated Api.gs + Code.gs.
  */
 function applyWorldBossRules() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  ensureConfigRow_(ss, 'boss_name', 'Revenue Overlord');
+  ensureConfigRow_(ss, 'boss_name', 'Crystal Citadel');
   ensureConfigRow_(ss, 'boss_target', 1000000);
-  setConfigValue('season_start', monthStartStr()); // pin the boss + Rank window to THIS month
+  ensureConfigRow_(ss, 'base_tower1_hp', '');
+  ensureConfigRow_(ss, 'base_tower2_hp', '');
+  ensureConfigRow_(ss, 'base_crystal_hp', '');
+  setConfigValue('season_start', monthStartStr()); // pin the gauntlet + Rank window to THIS month
   setConfigValue('season_end', monthEndStr());
   buildGuide(ss);
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
-  uiAlert_('World Boss rules applied',
-    'Guide tab refreshed for the World Boss model.\n\n' +
+  uiAlert_('Ruleset applied',
+    'Guide tab refreshed for the monthly gauntlet (Tower I → Tower II → Crystal).\n\n' +
     'Config now has boss_name + boss_target (default 1,000,000) and the season is set to THIS month (' +
-    monthStartStr() + ' → ' + monthEndStr() + '). Edit boss_target to change the goal, or boss_name to rename the boss.\n\n' +
-    'There is NO auto month rollover — run setSeasonToThisMonth whenever you want to start a fresh boss.\n\n' +
+    monthStartStr() + ' → ' + monthEndStr() + '). Total HP auto-splits 30/40/30 across the two towers + crystal; ' +
+    'set base_tower1_hp / base_tower2_hp / base_crystal_hp to size each stage yourself.\n\n' +
+    'There is NO auto month rollover — run setSeasonToThisMonth whenever you want to start a fresh gauntlet.\n\n' +
     'Remember to Deploy → New version so the live API picks up the new Api.gs.');
 }
 
 /**
  * Manually start a fresh month: sets season_start/season_end to the current
- * month, which resets the boss HP and everyone's Rank to count only this
+ * month, which resets the gauntlet and everyone's Rank to count only this
  * month's rows. Run THIS on the 1st of any month you want to reset (there is
  * no automatic rollover, by design).
  */
@@ -881,7 +888,7 @@ function setSeasonToThisMonth() {
   try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
   uiAlert_('Season set to this month',
     'season_start = ' + monthStartStr() + '\nseason_end = ' + monthEndStr() + '\n\n' +
-    "The boss HP and everyone's Rank now count THIS month's revenue/EXP only.");
+    "The gauntlet and everyone's Rank now count THIS month's revenue/EXP only.");
 }
 
 /** Append a Config key/value only if the key isn't already there (preserves GM edits). */
@@ -964,17 +971,17 @@ function buildHomeTab(ss) {
     { t: 'kv', a: 'Redemptions', b: 'Shop redeems waiting for your approval.' },
     { t: 'kv', a: 'Mission_Log', b: 'Missions players submitted, waiting for approval.' },
     { t: 'kv', a: 'Players', b: 'Everyone on the team + their 4-digit PINs.' },
-    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how the World Boss works.' },
+    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how the monthly gauntlet works.' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '🤖 AUTOMATIC — NO ACTION NEEDED', b: '' },
-    { t: 'step', a: 'The World Boss HP, the Damage ranking, and everyone\'s Gold all update by themselves from the rows you approve in EXP_Log — nothing to hand-edit. (To start a fresh monthly boss, run setSeasonToThisMonth in the Apps Script editor.)', b: '' },
+    { t: 'step', a: 'The gauntlet (Tower I → Tower II → Crystal), the Damage ranking, and everyone\'s Gold all update by themselves from the rows you approve in EXP_Log — nothing to hand-edit. (To start a fresh gauntlet, run setSeasonToThisMonth in the Apps Script editor.)', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '⚙️ SETUP TABS ARE HIDDEN', b: '' },
     { t: 'step', a: 'Shop / Actions / Missions / Config / Presets are hidden to keep things clean. To change prices, point values, missions, or the season, show them via the ☰ "All Sheets" icon (bottom-left) or View → Hidden sheets.', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '✅ GOLDEN RULES', b: '' },
     { t: 'step', a: '• Nothing counts until you tick "approved".', b: '' },
-    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it is the damage dealt to the World Boss + the Damage board.', b: '' },
+    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it is the damage dealt to the citadel + the Damage board.', b: '' },
     { t: 'step', a: '• To fix a mistake: add a new row with a NEGATIVE number. Never delete history.', b: '' }
   ];
 
