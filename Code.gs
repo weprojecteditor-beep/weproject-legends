@@ -1026,6 +1026,37 @@ function setWellousRoster() {
 }
 
 /**
+ * Applies the World Boss ruleset to a LIVE sheet (non-destructive):
+ *   • Refreshes the Guide tab to the World Boss rules.
+ *   • Adds Config rows boss_name / boss_target if missing (keeps your value if
+ *     you already set one). Default monthly goal = 1,000,000.
+ * Run THIS function once after pasting the updated Api.gs + Code.gs.
+ */
+function applyWorldBossRules() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureConfigRow_(ss, 'boss_name', 'Revenue Overlord');
+  ensureConfigRow_(ss, 'boss_target', 1000000);
+  buildGuide(ss);
+  SpreadsheetApp.getUi().alert('World Boss rules applied',
+    'Guide tab refreshed for the World Boss model.\n\n' +
+    'Config now has boss_name + boss_target (default 1,000,000). ' +
+    'Edit boss_target in the Config tab to change the monthly goal, or boss_name to rename the boss.\n\n' +
+    'Remember to Deploy → New version so the live API picks up the new Api.gs.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/** Append a Config key/value only if the key isn't already there (preserves GM edits). */
+function ensureConfigRow_(ss, key, value) {
+  var sheet = ss.getSheetByName('Config');
+  if (!sheet) return;
+  var values = sheet.getDataRange().getValues();
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][0]) === key) return;
+  }
+  sheet.appendRow([key, value]);
+}
+
+/**
  * SIMPLIFY THE SHEET for the GM. Builds a plain-English HOME tab, orders +
  * colors the tabs used day-to-day, and HIDES the setup tabs (not deleted —
  * unhide anytime via the ☰ "All Sheets" icon or View → Hidden sheets).
