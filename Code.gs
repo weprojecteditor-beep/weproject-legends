@@ -407,14 +407,14 @@ function buildShop(ss) {
   var headers = ['item_id', 'team', 'name', 'icon', 'price', 'stock', 'active']; // stock -1 = unlimited
 
   var items = [
-    ['S01', 'weproject', 'Coffee Voucher',            '☕',  300,  -1, true],
-    ['S02', 'weproject', 'Bubble Tea',                '🧋',  400,  -1, true],
-    ['S03', 'weproject', 'Mystery Box',                '🎁',  500,  -1, true],
-    ['S04', 'weproject', 'Lunch Voucher RM20',         '🍱',  800,  -1, true],
-    ['S05', 'weproject', 'Late Pass (1×)',             '🎟️', 2000, -1, true],
-    ['S06', 'weproject', 'Leave 1hr Early',            '🕐',  3000, -1, true],
-    ['S07', 'weproject', 'Team Tea Time — Your Pick',  '🧃',  4000, -1, true],
-    ['S08', 'weproject', 'Limited Drop: Earbuds',      '🎧',  5000,  1, true]
+    ['S01', 'weproject', 'TNG eWallet RM5',                    '💳',  300,  -1, true],
+    ['S02', 'weproject', 'Coffee / Bubble Tea Voucher',        '☕',  400,  -1, true],
+    ['S03', 'weproject', 'Mystery Box',                        '🎁',  500,  -1, true],
+    ['S04', 'weproject', 'Lunch Voucher RM20',                 '🍱',  800,  -1, true],
+    ['S05', 'weproject', 'Lunch Recharge Pass (Extra 30 mins)', '🍚', 2000, -1, true],
+    ['S06', 'weproject', 'Early Escape Pass (1 Hour Early)',    '🏃', 3000, -1, true],
+    ['S07', 'weproject', 'Team Tea Time — Your Pick',          '🧃',  4000, -1, true],
+    ['S08', 'weproject', 'Limited Drop: Earbuds',              '🎧',  5000,  1, true]
   ];
 
   var sheet = makeSheet(ss, 'Shop', headers, items);
@@ -503,20 +503,32 @@ function buildActions(ss) {
   // role='Any' = applies to every role. Numbers here are starter values —
   // GM tunes freely; the Guide page reads straight from this table.
   var rows = [
-    ['A01', 'weproject', 'Marketer', 'Winning Creative',        'Ad marked as a winning creative (hits conversion threshold)', 80, '', 'achievement', true],
-    ['A02', 'weproject', 'Marketer', 'High CTR Creative',       'Ad reaches the high-CTR threshold',                            40, 200, 'action', true],
-    ['A03', 'weproject', 'Marketer', 'Revenue Milestone',       'Hit a set RM revenue milestone',                               100, '', 'milestone', true],
-    ['A04', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
-    ['A05', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
+    // Marketer
+    ['A01', 'weproject', 'Marketer', 'Winning Creative',        '>5 purchases with ROAS > 3',                                  80, '', 'achievement', true],
+    ['A02', 'weproject', 'Marketer', 'Revenue Milestone',       'Hit a set RM revenue milestone',                              100, '', 'milestone', true],
+    ['A03', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
+    ['A04', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
 
-    ['A06', 'weproject', 'LiveHost', 'Live Closed Sale',        'Sale closed during a live session',                            50, 200, 'action', true],
-    ['A07', 'weproject', 'LiveHost', 'Clutch Close',            'Converted a hesitant buyer during a live session',             15, 200, 'action', true],
-    ['A08', 'weproject', 'LiveHost', 'Live MVP',                'Best live performance of the day',                             50, '', 'mvp', true],
+    // LiveHost / CS
+    ['A05', 'weproject', 'LiveHost', 'RM3k per Live Session',   'Achieve RM3,000 sales in one live session',                    25, 200, 'action', true],
+    ['A06', 'weproject', 'LiveHost', 'Low Returns',            'Keep monthly returned orders within 5 orders',                 15, '', 'action', true],
+    ['A07', 'weproject', 'LiveHost', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
+    ['A08', 'weproject', 'LiveHost', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
 
-    ['A09', 'weproject', 'Editor',   'Assist — Winning Creative', 'An ad you edited becomes a Winning Creative',                40, '', 'assist', true],
-    ['A10', 'weproject', 'Editor',   'Assist — High CTR',       'An ad you edited becomes High CTR',                            20, '', 'assist', true],
+    // Editor
+    ['A09', 'weproject', 'Editor',   'Winning Creative Production', 'A video you produced gets >5 purchases with ROAS > 3',      50, '', 'achievement', true],
+    ['A10', 'weproject', 'Editor',   'All Video Purchase',      '30 purchases in a week across your videos',                     30, '', 'action', true],
 
-    ['A11', 'weproject', 'Any',      'All Missions Complete',   'Completed every daily mission for your role',                  30, '', 'action', true]
+    // Everyone
+    ['A11', 'weproject', 'Any',      'All Daily Missions Complete', 'Completed every daily mission for your role',               30, '', 'action', true],
+
+    // Daily Sales Bonus ladder — Marketer & LiveHost/CS, highest tier only
+    ['A12', 'weproject', 'Marketer', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true],
+    ['A13', 'weproject', 'Marketer', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true],
+    ['A14', 'weproject', 'Marketer', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true],
+    ['A15', 'weproject', 'LiveHost', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true],
+    ['A16', 'weproject', 'LiveHost', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true],
+    ['A17', 'weproject', 'LiveHost', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true]
   ];
 
   var sheet = makeSheet(ss, 'Actions', headers, rows);
@@ -533,14 +545,22 @@ function buildActions(ss) {
 function buildMissions(ss) {
   var headers = ['mission_id', 'team', 'role', 'text_en', 'exp', 'sort', 'active'];
 
+  // LiveHost / CS share the "LiveHost" role in the system (assign CS staff role = LiveHost in Players).
   var rows = [
-    ['M01', 'weproject', 'Marketer', 'Publish at least 1 ad',            10, 1, true],
-    ['M02', 'weproject', 'Marketer', 'Submit report before 10:30am',     5,  2, true],
-    ['M03', 'weproject', 'Marketer', 'Blast 1 audience pool',            10, 3, true],
-    ['M04', 'weproject', 'LiveHost', 'Go live at least 2 hours',         10, 1, true],
-    ['M05', 'weproject', 'LiveHost', 'Submit live report',               5,  2, true],
-    ['M06', 'weproject', 'Editor',   'Deliver at least 1 edited ad',     10, 1, true],
-    ['M07', 'weproject', 'Editor',   'Submit edit report',               5,  2, true]
+    ['M01', 'weproject', 'Marketer', 'Publish at least 4 ads',                              10, 1, true],
+    ['M02', 'weproject', 'Marketer', 'Submit report before 10:30am',                        5,  2, true],
+    ['M03', 'weproject', 'Marketer', 'Blast 1 audience pool',                               10, 3, true],
+    ['M04', 'weproject', 'Marketer', 'FB / IG daily posting',                               5,  4, true],
+
+    ['M05', 'weproject', 'LiveHost', 'Submit daily report before 10:30am',                  5,  1, true],
+    ['M06', 'weproject', 'LiveHost', 'Submit daily sales report before 5:50pm',             5,  2, true],
+    ['M07', 'weproject', 'LiveHost', 'Upload 2 TikTok content pieces per day',              5,  3, true],
+    ['M08', 'weproject', 'LiveHost', 'Share 2 customer testimonials in the WhatsApp group', 5,  4, true],
+    ['M09', 'weproject', 'LiveHost', 'Conduct live sessions at least 3 hours per day',      5,  5, true],
+
+    ['M10', 'weproject', 'Editor',   'Deliver at least 1 edited video (with Dropbox link)', 10, 1, true],
+    ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true],
+    ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true]
   ];
 
   var sheet = makeSheet(ss, 'Missions', headers, rows);
@@ -647,6 +667,27 @@ function buildGuide(ss) {
     { r: ['• Skin multiplier by Level: Lv1–9 ×1.0, Lv10+ ×1.1 (Elite), Lv20+ ×1.2 (Legend) — higher level earns Gold faster.', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
+    { r: ['DAILY SALES BONUS (Marketer & LiveHost/CS only)', '', '', '', ''], t: 'section' },
+    { r: ['when a person\'s personal sales for the day reach…', 'they earn', '', '', ''], t: 'head' },
+    { r: ['RM 3,000 in a day', '50 coins', '', '', ''], t: 'note' },
+    { r: ['RM 5,000 in a day', '80 coins', '', '', ''], t: 'note' },
+    { r: ['RM 10,000 in a day', '200 coins', '', '', ''], t: 'note' },
+    { r: ['Highest tier only — a RM10k day earns 200 (not 50+80+200). Log ONE "milestone" row in EXP_Log for the top tier reached.', '', '', '', ''], t: 'note' },
+    { r: blank, t: 'note' },
+
+    { r: ['TV FEED TAGS (post standout moments to Achievements_Feed)', '', '', '', ''], t: 'section' },
+    { r: ['tag', 'post it when…', '', '', ''], t: 'head' },
+    { r: ['FIRST BLOOD', 'The first sale / order of the day (whole team) lands', '', '', ''], t: 'note' },
+    { r: ['DOUBLE KILL', '10 purchases in a day', '', '', ''], t: 'note' },
+    { r: ['WINNING CREATIVE', 'An ad hits >5 purchases with ROAS > 3', '', '', ''], t: 'note' },
+    { r: ['SAVAGE', 'An exceptional feat — e.g. a big single-day sales record', '', '', ''], t: 'note' },
+    { r: ['MANIAC', 'A strong streak just below Savage', '', '', ''], t: 'note' },
+    { r: ['MVP', 'Best performer of the day (HR pick)', '', '', ''], t: 'note' },
+    { r: ['ASSIST', 'Helped a teammate (e.g. an Editor cut becomes a Winning Creative)', '', '', ''], t: 'note' },
+    { r: ['BOSS DAMAGE', 'A big RM chunk breaks a Tower or the Crystal', '', '', ''], t: 'note' },
+    { r: ['MILESTONE', 'A revenue milestone is hit', '', '', ''], t: 'note' },
+    { r: blank, t: 'note' },
+
     { r: ['GOLDEN RULES', '', '', '', ''], t: 'section' },
     { r: ['• Gold = total approved EXP − shop spending. Spending Gold never lowers a Rank.', '', '', '', ''], t: 'note' },
     { r: ['• Rank uses SEASON (this calendar month) EXP. Level uses ALL-TIME EXP.', '', '', '', ''], t: 'note' },
@@ -739,16 +780,18 @@ function enableSmartLogging() {
     .setFontWeight('bold').setFontColor('#F5C542').setBackground('#0A0D1C');
 
   var presets = [
-    ['Publish ≥1 ad', 'mission', 10],
-    ['Submit report before 10:30am', 'mission', 5],
-    ['Blast 1 audience pool', 'mission', 10],
-    ['Completed all daily missions', 'action', 30],
-    ['10 purchases in a single day (Double Kill)', 'action', 20],
-    ['Helped a teammate (Assist)', 'assist', 15],
+    ['Daily sales RM3,000', 'milestone', 50],
+    ['Daily sales RM5,000', 'milestone', 80],
+    ['Daily sales RM10,000', 'milestone', 200],
+    ['Winning Creative (>5 purchases, ROAS>3)', 'achievement', 80],
+    ['Revenue Milestone', 'milestone', 100],
     ['First order of the day (First Blood)', 'achievement', 10],
-    ['Winning Creative', 'achievement', 80],
-    ['High CTR Creative', 'action', 40],
-    ['Daily MVP', 'mvp', 50]
+    ['10 purchases in a day (Double Kill)', 'action', 20],
+    ['RM3k per live session', 'action', 25],
+    ['Low returns (<=5 this month)', 'action', 15],
+    ['All daily missions complete', 'action', 30],
+    ['Editor: Winning Creative Production', 'achievement', 50],
+    ['Editor: All Video Purchase (30/week)', 'action', 30]
   ];
   p.getRange(2, 1, presets.length, 3).setValues(presets);
   p.setFrozenRows(1);
@@ -900,6 +943,25 @@ function ensureConfigRow_(ss, key, value) {
     if (String(values[r][0]) === key) return;
   }
   sheet.appendRow([key, value]);
+}
+
+/**
+ * Rebuilds the Missions / Actions / Shop tabs with the finalized Sales Challenge
+ * content, plus the daily sales bonus ladder, and refreshes the Guide (feed-tag
+ * dictionary + sales bonus). These are CONFIG tabs — safe to rebuild; it does
+ * NOT touch Players / EXP_Log / Redemptions / Mission_Log data.
+ * Run THIS once after pasting the new Code.gs. (CS staff = set role "LiveHost".)
+ */
+function applySalesChallengeConfig() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildMissions(ss);
+  buildActions(ss);
+  buildShop(ss);
+  buildGuide(ss);
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
+  uiAlert_('Sales Challenge config applied',
+    'Updated tabs: Missions, Actions (incl. daily sales bonus RM3k/5k/10k = 50/80/200 for Marketer & LiveHost/CS), Shop (renamed rewards), and the Guide (feed-tag dictionary).\n\n' +
+    'Reminder: assign CS staff the role "LiveHost" in the Players tab, then Deploy → New version.');
 }
 
 /**
