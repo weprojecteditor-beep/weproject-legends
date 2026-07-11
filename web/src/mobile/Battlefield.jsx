@@ -15,14 +15,14 @@ function StageCard({ s }) {
     <div style={{ clipPath: CLIP_SM, padding: "9px 5px 8px", textAlign: "center",
       background: cleared ? "#08160F" : active ? `${accent}14` : C.panelSoft,
       border: `1px solid ${cleared ? C.green + "66" : active ? accent + "99" : C.line}`, opacity: cleared ? 0.9 : active ? 1 : 0.55 }}>
-      <div className={s.isCrystal && !cleared ? "crystalPulse" : ""} style={{ fontSize: s.isCrystal ? 26 : 19, color: col,
+      <div className={s.isCrystal && !cleared ? "crystalPulse" : ""} style={{ fontSize: s.isCrystal ? 30 : 22, color: col,
         filter: cleared ? "grayscale(1)" : (active || s.isCrystal) ? `drop-shadow(0 0 12px ${col})` : "none" }}>{cleared ? "💥" : s.icon}</div>
-      <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em", marginTop: 3, color: col,
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", marginTop: 4, color: col,
         fontFamily: "'Chakra Petch',sans-serif", textDecoration: cleared ? "line-through" : "none" }}>{s.name}</div>
-      <div style={{ marginTop: 5, transform: "skewX(-12deg)", height: 7, background: "#02040D", border: `1px solid ${col}44`, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ marginTop: 6, transform: "skewX(-12deg)", height: 8, background: "#02040D", border: `1px solid ${col}44`, borderRadius: 2, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${Math.max(0, (s.pct || 0) * 100)}%`, background: cleared ? "transparent" : `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: cleared ? "none" : `0 0 8px ${col}`, transition: "width 1.1s cubic-bezier(.2,.8,.3,1)" }} />
       </div>
-      <div style={{ fontSize: 8, marginTop: 3, color: cleared ? C.green : C.dim, fontWeight: cleared ? 800 : 400 }}>{cleared ? "CLEARED" : fmt(s.remaining) + " HP"}</div>
+      <div style={{ fontSize: 9, marginTop: 4, color: cleared ? C.green : C.dim, fontWeight: cleared ? 800 : 400 }}>{cleared ? "CLEARED" : fmt(s.remaining) + " HP"}</div>
     </div>
   );
 }
@@ -37,15 +37,18 @@ function WorldBoss({ boss }) {
 
   return (
     <Frame glow={glow} pad={0}>
-      <div style={{ padding: "16px 14px 12px", background: `radial-gradient(ellipse 80% 90% at 50% 0%, ${C.cyan}18 0%, transparent 60%)` }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+      <div style={{ position: "relative", overflow: "hidden", padding: "16px 14px 12px", background: `radial-gradient(ellipse 80% 90% at 50% 0%, ${C.cyan}18 0%, transparent 60%)` }}>
+        {[[10, 14], [34, 9], [62, 16], [86, 11], [50, 58]].map((s, i) => (
+          <span key={i} className="tw" style={{ position: "absolute", left: `${s[0]}%`, top: `${s[1]}%`, fontSize: 10, color: C.goldHi, filter: `drop-shadow(0 0 4px ${C.gold})`, animationDelay: `${i * 0.5}s`, pointerEvents: "none" }}>✦</span>
+        ))}
+        <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.2em", color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>◆ MONTHLY GAUNTLET · {boss.month || "THIS MONTH"}</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 19, color: glow, textShadow: `0 0 16px ${glow}88`, letterSpacing: "0.04em", textTransform: "uppercase" }}>{boss.name || "Crystal Citadel"}</div>
+            <div className="shineText" style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 23, letterSpacing: "0.04em", textTransform: "uppercase", filter: `drop-shadow(0 0 10px ${glow}88)` }}>{boss.name || "Crystal Citadel"}</div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{ fontSize: 8, color: C.dimmer, letterSpacing: "0.14em" }}>STAGE</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 20, color: defeated ? C.green : C.cyan }}>{defeated ? 3 : stageNo}<span style={{ fontSize: 12, color: C.dimmer }}>/3</span></div>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 26, color: defeated ? C.green : C.cyan, textShadow: `0 0 12px ${(defeated ? C.green : C.cyan)}66` }}>{defeated ? 3 : stageNo}<span style={{ fontSize: 13, color: C.dimmer }}>/3</span></div>
           </div>
         </div>
 
@@ -65,11 +68,11 @@ function WorldBoss({ boss }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
           <div>
             <div style={{ fontSize: 9, color: C.dimmer, letterSpacing: "0.1em" }}>TOTAL DAMAGE</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 17, color: C.gold, textShadow: `0 0 12px ${C.gold}66` }}>RM {fmt(dealt)} <span style={{ fontSize: 10, color: C.dimmer }}>/ {fmt(target)}</span></div>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 20, color: C.gold, textShadow: `0 0 14px ${C.gold}88` }}>RM {fmt(dealt)} <span style={{ fontSize: 11, color: C.dimmer }}>/ {fmt(target)}</span></div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 9, color: C.dimmer, letterSpacing: "0.1em" }}>TODAY</div>
-            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 17, color: C.cyan, textShadow: `0 0 12px ${C.cyan}66` }}>+{fmt(boss.todayDamage || 0)}</div>
+            <div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 20, color: C.cyan, textShadow: `0 0 14px ${C.cyan}88` }}>+{fmt(boss.todayDamage || 0)}</div>
           </div>
         </div>
       </div>
@@ -124,7 +127,7 @@ function DamageBoard({ rows, meId }) {
           {sorted.map((p, i) => (
             <RankRow key={p.playerId} idx={i} p={p} topCol={C.gold}
               subEl={<span style={{ fontSize: 9, color: C.dimmer }}>Lv{p.level}</span>}
-              valueEl={<div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 15, color: i === 0 ? C.gold : C.text, textShadow: i === 0 ? `0 0 14px ${C.gold}` : "none" }}>{fmt(p.damage)}</div>} />
+              valueEl={<div style={{ fontFamily: "'Chakra Petch',sans-serif", fontWeight: 900, fontSize: 17, color: i === 0 ? C.gold : C.text, textShadow: i === 0 ? `0 0 14px ${C.gold}` : "none" }}>{fmt(p.damage)}</div>} />
           ))}
         </div>
       )}
@@ -197,7 +200,11 @@ export default function Battlefield({ state, meId }) {
         .crystalPulse{animation:crystalPulse 1.6s ease-in-out infinite;}
         @keyframes feedIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
         .feedItem{animation:feedIn .5s ease both;}
-        @media (prefers-reduced-motion: reduce){.crystalPulse,.feedItem{animation:none!important;}}
+        @keyframes twinkle{0%,100%{opacity:.2;transform:scale(.7);}50%{opacity:1;transform:scale(1.2);}}
+        .tw{animation:twinkle 2.6s ease-in-out infinite;}
+        @keyframes mshim{to{background-position:200% center;}}
+        .shineText{background:linear-gradient(100deg,#FFE79A 0%,#F5C542 25%,#FFFDF0 45%,#F5C542 65%,#FFE79A 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:mshim 3.2s linear infinite;}
+        @media (prefers-reduced-motion: reduce){.crystalPulse,.feedItem,.tw,.shineText{animation:none!important;}}
       `}</style>
       <WorldBoss boss={state.boss || {}} />
       <DamageBoard rows={state.damageRanking} meId={meId} />
