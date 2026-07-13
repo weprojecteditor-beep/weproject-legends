@@ -205,8 +205,8 @@ function FeedScreen({ feed }) {
           <div key={i} className="fin" style={{ display: "flex", alignItems: "center", gap: "1.4vw", clipPath: CLIP_SM, background: `linear-gradient(100deg, ${C.cyan}12, ${C.panelSoft} 45%)`, border: `2px solid ${C.cyan}66`, padding: "1.9vh 1.5vw", animationDelay: `${i * 0.1}s`, boxShadow: `0 0 1.6vh ${C.cyan}18` }}>
             <div style={{ fontSize: "3.6vw", filter: `drop-shadow(0 0 1.4vh ${C.cyan}55)` }}>{f.icon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: C.gold, fontWeight: 900, fontSize: "1.5vw", fontFamily: "'Chakra Petch',sans-serif", letterSpacing: "0.06em", textShadow: `0 0 1vh ${C.gold}66` }}>{f.tag}</div>
-              <div style={{ fontSize: "2vw" }}><b>{f.name}</b> <span style={{ color: C.dim, fontSize: "1.5vw" }}>· {f.description}</span></div>
+              <div style={{ color: C.gold, fontWeight: 900, fontSize: "1.5vw", fontFamily: "'Chakra Petch',sans-serif", letterSpacing: "0.06em", textShadow: `0 0 1vh ${C.gold}66` }}>{f.commander ? "⚔ COMMANDER" : f.tag}</div>
+              <div style={{ fontSize: "2vw" }}><b style={{ color: f.commander ? C.gold : C.text }}>{f.name}</b> <span style={{ color: C.dim, fontSize: "1.5vw" }}>· {f.description}</span></div>
             </div>
             {f.exp > 0 && <div style={{ color: C.cyan, fontWeight: 900, fontSize: "2.4vw", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 1.4vh ${C.cyan}` }}>+{f.exp}</div>}
           </div>

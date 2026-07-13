@@ -45,6 +45,15 @@ var HERO_CLASS_BY_ROLE = {
   Salesperson: ['Marksman', 'Assassin', 'Berserker'] // Slayer (legacy)
 };
 
+var PLAYER_STATUSES = ['player', 'commander']; // commander = sales count toward boss, but no EXP/coins/rank and hidden from leaderboards
+
+// Commanders (team leads): [name, role, avatar]. Added as P017+ with status=commander.
+var COMMANDERS = [
+  ['Jeanette', 'Marketer', '👑'],
+  ['Haikal',   'Marketer', '👑'],
+  ['Chloe',    'LiveHost', '👑']
+];
+
 var GROW_ROWS = 2000; // apply validation this many rows down for sheets that grow
 var SMALL_ROWS = 200;
 
@@ -335,7 +344,7 @@ function currentMonthStr() {
 /* ------------------------------------------------------------------ */
 
 function buildPlayers(ss) {
-  var headers = ['player_id', 'team', 'name', 'role', 'hero_class', 'gender_pref', 'pin', 'avatar', 'join_date', 'active'];
+  var headers = ['player_id', 'team', 'name', 'role', 'hero_class', 'gender_pref', 'pin', 'avatar', 'join_date', 'active', 'status'];
 
   // hero_class/pin/join_date left blank — GM assigns PINs, players self-select class.
   var roster = [
@@ -359,13 +368,19 @@ function buildPlayers(ss) {
 
   var rows = roster.map(function (r, i) {
     var id = 'P' + ('00' + (i + 1)).slice(-3); // P001..P016
-    return [id, 'weproject', r[0], r[1], '', '', '', r[2], '', true];
+    return [id, 'weproject', r[0], r[1], '', '', '', r[2], '', true, 'player'];
+  });
+  // Commanders P017+ (status=commander)
+  COMMANDERS.forEach(function (c, j) {
+    var id = 'P' + ('00' + (roster.length + j + 1)).slice(-3);
+    rows.push([id, 'weproject', c[0], c[1], '', '', '', c[2], '', true, 'commander']);
   });
 
   var sheet = makeSheet(ss, 'Players', headers, rows);
   applyDropdown(sheet, 2, SMALL_ROWS, TEAMS);
   applyDropdown(sheet, 4, SMALL_ROWS, PLAYER_ROLES);
-  applyCheckbox(sheet, 10, SMALL_ROWS); // active
+  applyCheckbox(sheet, 10, SMALL_ROWS);        // active
+  applyDropdown(sheet, 11, SMALL_ROWS, PLAYER_STATUSES); // status
 }
 
 /* ------------------------------------------------------------------ */
@@ -412,7 +427,7 @@ function buildShop(ss) {
     ['S03', 'weproject', 'Mystery Box',                        '🎁',  500,  -1, true],
     ['S04', 'weproject', 'Lunch Voucher RM20',                 '🍱',  800,  -1, true],
     ['S05', 'weproject', 'Lunch Recharge Pass (Extra 30 mins)', '🍚', 2000, -1, true],
-    ['S06', 'weproject', 'Early Escape Pass (1 Hour Early)',    '🏃', 3000, -1, true],
+    ['S06', 'weproject', 'Early Escape Pass (1 Hour Early Leave)', '🏃', 3000, -1, true],
     ['S07', 'weproject', 'Team Tea Time — Your Pick',          '🧃',  4000, -1, true],
     ['S08', 'weproject', 'Limited Drop: Earbuds',              '🎧',  5000,  1, true]
   ];
@@ -505,7 +520,6 @@ function buildActions(ss) {
   var rows = [
     // Marketer
     ['A01', 'weproject', 'Marketer', 'Winning Creative',        '>5 purchases with ROAS > 3',                                  80, '', 'achievement', true],
-    ['A02', 'weproject', 'Marketer', 'Revenue Milestone',       'Hit a set RM revenue milestone',                              100, '', 'milestone', true],
     ['A03', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
     ['A04', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
 
@@ -555,12 +569,15 @@ function buildMissions(ss) {
     ['M05', 'weproject', 'LiveHost', 'Submit daily report before 10:30am',                  5,  1, true],
     ['M06', 'weproject', 'LiveHost', 'Submit daily sales report before 5:50pm',             5,  2, true],
     ['M07', 'weproject', 'LiveHost', 'Upload 2 TikTok content pieces per day',              5,  3, true],
-    ['M08', 'weproject', 'LiveHost', 'Share 2 customer testimonials in the WhatsApp group', 5,  4, true],
+    ['M08', 'weproject', 'LiveHost', 'Share 2 customer testimonials in the WhatsApp group', 10, 4, true],
     ['M09', 'weproject', 'LiveHost', 'Conduct live sessions at least 3 hours per day',      5,  5, true],
 
     ['M10', 'weproject', 'Editor',   'Deliver at least 1 edited video (with Dropbox link)', 10, 1, true],
     ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true],
-    ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true]
+    ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true],
+
+    // Everyone (role = Any) — shows for all roles
+    ['M13', 'weproject', 'Any',      'Update Sales in Group by 6pm daily',                  10, 9, true]
   ];
 
   var sheet = makeSheet(ss, 'Missions', headers, rows);
@@ -784,7 +801,6 @@ function enableSmartLogging() {
     ['Daily sales RM5,000', 'milestone', 80],
     ['Daily sales RM10,000', 'milestone', 200],
     ['Winning Creative (>5 purchases, ROAS>3)', 'achievement', 80],
-    ['Revenue Milestone', 'milestone', 100],
     ['First order of the day (First Blood)', 'achievement', 10],
     ['10 purchases in a day (Double Kill)', 'action', 20],
     ['RM3k per live session', 'action', 25],
@@ -962,6 +978,137 @@ function applySalesChallengeConfig() {
   uiAlert_('Sales Challenge config applied',
     'Updated tabs: Missions, Actions (incl. daily sales bonus RM3k/5k/10k = 50/80/200 for Marketer & LiveHost/CS), Shop (renamed rewards), and the Guide (feed-tag dictionary).\n\n' +
     'Reminder: assign CS staff the role "LiveHost" in the Players tab, then Deploy → New version.');
+}
+
+/**
+ * v1.1 (2026-07): applies rule changes + the Commander role to a LIVE sheet.
+ *   • Rebuilds Missions / Actions / Shop / Guide (new "Update Sales in Group"
+ *     mission, testimonials 10 EXP, Revenue Milestone removed, shop wording).
+ *   • Adds a 'status' column to Players (default 'player') if missing.
+ *   • Adds commanders Jeanette / Haikal / Chloe as P017+ with status=commander.
+ * Run THIS once, then run seedJulyDamage, then Deploy → New version.
+ */
+function applyV11() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildMissions(ss);
+  buildActions(ss);
+  buildShop(ss);
+  buildGuide(ss);
+  var addedCol = migratePlayersStatus_(ss);
+  var newCmd = ensureCommanders_(ss);
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous', 'roster']); } catch (e) {}
+  uiAlert_('v1.1 applied',
+    'Rules updated: new "Update Sales in Group by 6pm" mission for all roles; testimonials now 10 EXP; Revenue Milestone removed; shop wording.\n\n' +
+    (addedCol ? 'Added a "status" column to Players (existing rows = player).\n' : 'Players already had a status column.\n') +
+    (newCmd.length ? 'Added commanders: ' + newCmd.join(', ') + '.\n' : 'Commanders already present.\n') +
+    '\nNext: run seedJulyDamage, then Deploy → New version.');
+}
+
+/** Add a 'status' column to Players (default 'player') if it isn't there yet. Returns true if added. */
+function migratePlayersStatus_(ss) {
+  var sheet = ss.getSheetByName('Players');
+  if (!sheet) return false;
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var idx = headers.indexOf('status');
+  if (idx !== -1) { applyDropdown(sheet, idx + 1, SMALL_ROWS, PLAYER_STATUSES); return false; }
+  var col = sheet.getLastColumn() + 1;
+  sheet.getRange(1, col).setValue('status').setFontWeight('bold').setFontColor('#F5C542').setBackground('#0A0D1C');
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    var vals = [];
+    for (var i = 0; i < lastRow - 1; i++) vals.push(['player']);
+    sheet.getRange(2, col, lastRow - 1, 1).setValues(vals);
+  }
+  applyDropdown(sheet, col, SMALL_ROWS, PLAYER_STATUSES);
+  return true;
+}
+
+/** Append commanders (by name) if not already in Players. Returns names added. */
+function ensureCommanders_(ss) {
+  var sheet = ss.getSheetByName('Players');
+  if (!sheet) return [];
+  var pHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var col = {};
+  pHeaders.forEach(function (h, i) { col[h] = i; });
+  var haveName = {}, maxNum = 0;
+  getRows('Players').forEach(function (p) {
+    haveName[String(p.name).trim().toLowerCase()] = true;
+    var m = String(p.player_id).match(/(\d+)/);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+  });
+  var added = [];
+  COMMANDERS.forEach(function (c) {
+    if (haveName[c[0].toLowerCase()]) return;
+    var id = 'P' + ('00' + (++maxNum)).slice(-3);
+    var row = [];
+    for (var i = 0; i < pHeaders.length; i++) row.push('');
+    row[col['player_id']] = id;
+    row[col['team']] = 'weproject';
+    row[col['name']] = c[0];
+    row[col['role']] = c[1];
+    if (col['avatar'] != null) row[col['avatar']] = c[2];
+    row[col['active']] = true;
+    if (col['status'] != null) row[col['status']] = 'commander';
+    sheet.appendRow(row);
+    added.push(c[0]);
+  });
+  return added;
+}
+
+/** thousands separator for the seed feed text */
+function commas_(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+/**
+ * Seeds July month-to-date boss damage (completed + COD combined), as of 14 Jul 2026.
+ * REPLACES EXP_Log + Achievements_Feed. Damage rows carry amount_rm only (no EXP).
+ * Total = RM 443,262.42 → Tower I broken, Tower II ~36%. Run applyV11 FIRST.
+ */
+function seedJulyDamage() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var exp = ss.getSheetByName('EXP_Log');
+  var feed = ss.getSheetByName('Achievements_Feed');
+  if (!exp || !feed) { uiAlert_('Setup needed', 'Run setupWeprojectLegends or migrateExistingSheetToV5_1 first.'); return; }
+
+  var idByName = {};
+  getRows('Players').forEach(function (p) { idByName[String(p.name).trim().toLowerCase()] = p.player_id; });
+
+  // [name, month-to-date damage (completed + COD)]
+  var seed = [
+    ['Jeanette', 97550.06], ['Haikal', 52726.00], ['Chloe', 19303.00],   // commanders (boss damage only)
+    ['Izz', 23147.13], ['Nina', 46413.55], ['Alia', 8542.00], ['Azim', 18459.00],
+    ['Wing Nam', 51544.00], ['Wen Pei', 458.00], ['Nizam', 53215.00], ['Intan', 12016.00],
+    ['Ain', 18728.00], ['Connie', 2882.00], ['Qistina', 15358.55], ['Dayah', 12804.50], ['Syaza', 10115.63]
+  ];
+  var when = new Date(2026, 6, 1, 9, 0, 0); // 1 Jul 2026, inside the season window
+
+  if (exp.getLastRow() > 1) exp.getRange(2, 1, exp.getLastRow() - 1, 9).clearContent();
+  var rows = [], total = 0, missing = [];
+  seed.forEach(function (s) {
+    var id = idByName[s[0].toLowerCase()];
+    if (!id) { missing.push(s[0]); return; }
+    total += s[1];
+    // log_id, date, player_id, category, item, exp, amount_rm, approved, note
+    rows.push(['', when, id, 'action', 'July sales MTD (completed + COD)', '', s[1], true, '']);
+  });
+  if (rows.length) exp.getRange(2, 1, rows.length, 9).setValues(rows);
+
+  // Commander sales on the feed (status auto-flags them as COMMANDER)
+  if (feed.getLastRow() > 1) feed.getRange(2, 1, feed.getLastRow() - 1, 6).clearContent();
+  var fwhen = new Date(2026, 6, 14, 10, 0, 0);
+  var frows = [];
+  [['Jeanette', 97550.06], ['Haikal', 52726.00], ['Chloe', 19303.00]].forEach(function (c) {
+    var id = idByName[c[0].toLowerCase()];
+    if (id) frows.push([fwhen, id, 'COMMANDER', '⚔️', 'dealt RM ' + commas_(c[1]) + ' damage', '']);
+  });
+  if (frows.length) feed.getRange(2, 1, frows.length, 6).setValues(frows);
+
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
+
+  uiAlert_('July damage seeded',
+    'Total boss damage = RM ' + commas_(total) + ' (' + rows.length + ' people).\n' +
+    (missing.length ? 'MISSING (run applyV11 first?): ' + missing.join(', ') + '\n' : '') +
+    'Tower I (300k) destroyed; Tower II at ' + commas_(Math.max(0, total - 300000)) + ' / 400,000.\n' +
+    'Commanders count toward the boss but are hidden from the leaderboard.');
 }
 
 /**

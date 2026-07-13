@@ -138,7 +138,7 @@ function Shell({ auth, onLogout }) {
       </div>
 
       {/* Body */}
-      <div style={{ padding: "0 16px 32px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 1120, margin: "0 auto" }}>
+      <div style={{ padding: "0 16px 32px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 880, margin: "0 auto" }}>
         <TabBoundary tab={tab}>
           {tab === "battle" && state.data && <Battlefield state={state.data} meId={auth.id} team={auth.team} />}
           {tab === "hero" && player.data && <Hero player={player.data} onMission={doMission} />}

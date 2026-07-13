@@ -171,8 +171,8 @@ function KillFeed({ feed, pmap }) {
                 background: `linear-gradient(90deg, ${col}10 0%, ${C.panelSoft} 40%)`, borderLeft: `3px solid ${col}`, clipPath: CLIP_SM, padding: "8px 11px", animationDelay: `${i * 0.08}s` }}>
                 {p ? <Avatar p={p} size={46} /> : <div style={{ fontSize: 22, width: 40, textAlign: "center" }}>{f.icon}</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: col, fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 10px ${col}88` }}>{f.tag}</div>
-                  <div style={{ fontSize: 13, marginTop: 1 }}><b>{f.name}</b></div>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: f.commander ? C.gold : col, fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 10px ${(f.commander ? C.gold : col)}88` }}>{f.commander ? "⚔ COMMANDER" : f.tag}</div>
+                  <div style={{ fontSize: 13, marginTop: 1 }}><b style={{ color: f.commander ? C.gold : C.text }}>{f.name}</b></div>
                   <div style={{ fontSize: 11, color: C.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.description}</div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -194,9 +194,8 @@ export default function Battlefield({ state, meId }) {
     if (!pmap[p.playerId]) pmap[p.playerId] = { heroClass: p.heroClass, role: p.role, rank: p.rank, name: p.name };
   });
   return (
-    <div className="bfWrap">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <style>{`
-        .bfWrap{display:flex;flex-direction:column;gap:12px;}
         @keyframes crystalPulse {0%,100%{transform:scale(1);filter:drop-shadow(0 0 8px currentColor);}50%{transform:scale(1.14);filter:drop-shadow(0 0 18px currentColor);}}
         .crystalPulse{animation:crystalPulse 1.6s ease-in-out infinite;}
         @keyframes feedIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
@@ -205,16 +204,12 @@ export default function Battlefield({ state, meId }) {
         .tw{animation:twinkle 2.6s ease-in-out infinite;}
         @keyframes mshim{to{background-position:200% center;}}
         .shineText{background:linear-gradient(100deg,#FFE79A 0%,#F5C542 25%,#FFFDF0 45%,#F5C542 65%,#FFE79A 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:mshim 3.2s linear infinite;}
-        @media (min-width:900px){
-          .bfWrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
-          .bfWrap > .bfFull{grid-column:1 / -1;}
-        }
         @media (prefers-reduced-motion: reduce){.crystalPulse,.feedItem,.tw,.shineText{animation:none!important;}}
       `}</style>
-      <div className="bfFull"><WorldBoss boss={state.boss || {}} /></div>
+      <WorldBoss boss={state.boss || {}} />
       <DamageBoard rows={state.damageRanking} meId={meId} />
       <CreativeBoard rows={state.creativeRanking} />
-      <div className="bfFull"><KillFeed feed={state.feed} pmap={pmap} /></div>
+      <KillFeed feed={state.feed} pmap={pmap} />
     </div>
   );
 }

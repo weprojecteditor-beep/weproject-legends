@@ -196,7 +196,7 @@ function getBossState(cfg, players, expApproved) {
   var today = todayStr();
   var todayDamage = sumTeamRevenueInRange(players, expApproved, 'weproject', today, today);
 
-  var rem = segRemain(dealt, segs);
+  var rem = segRemain(Math.max(0, dealt), segs); // guard: negative net (returns > sales) never over-fills a stage
   var meta = [
     { name: 'TOWER I',  icon: '🗼' },
     { name: 'TOWER II', icon: '🗼' },
@@ -262,7 +262,7 @@ function getDamageRanking(players, expApproved, cfg, levelTh, team) {
     allExp[r.player_id] = (allExp[r.player_id] || 0) + num(r.exp);
     if (d >= seasonStart && d <= seasonEnd) seasonExp[r.player_id] = (seasonExp[r.player_id] || 0) + num(r.exp);
   });
-  return players.filter(function (p) { return p.active && p.team === team; })
+  return players.filter(function (p) { return p.active && p.team === team && !isCommander(p); }) // commanders excluded from the board
     .map(function (p) {
       return {
         playerId: p.player_id, name: p.name, role: p.role,
@@ -288,7 +288,7 @@ function getCreativeRanking(players, expApproved, team) {
   });
   return players.filter(function (p) {
       var a = byPlayer[p.player_id];
-      return p.team === team && a && (a.winning > 0 || a.highCtr > 0); // only real winners
+      return p.team === team && !isCommander(p) && a && (a.winning > 0 || a.highCtr > 0); // only real winners, no commanders
     })
     .map(function (p) {
       var a = byPlayer[p.player_id];
@@ -307,7 +307,7 @@ function getTeamFeed(players, team) {
     .sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); })
     .map(function (f) {
       var p = playerById(players, f.player_id);
-      return { playerId: f.player_id, name: p ? p.name : f.player_id, tag: f.tag, icon: f.icon, description: f.description, exp: num(f.exp), timestamp: dateTimeStr(f.timestamp) };
+      return { playerId: f.player_id, name: p ? p.name : f.player_id, tag: f.tag, icon: f.icon, description: f.description, exp: num(f.exp), timestamp: dateTimeStr(f.timestamp), commander: isCommander(p) };
     });
 }
 
@@ -380,6 +380,7 @@ function getPlayer(id, pin) {
     name: p.name,
     role: p.role,
     team: p.team,
+    status: p.status,
     avatar: p.avatar,
     heroClass: p.hero_class || '',
     classFamily: CLASS_FAMILY_BY_ROLE[p.role] || '',
@@ -486,7 +487,7 @@ function findEarliestSeasonThresholdCrosser(players, thresholdExp, seasonStart, 
 
 function getRoster() {
   return getPlayers()
-    .filter(function (p) { return p.active && p.team === 'weproject'; }) // solo World Boss — WeProject only
+    .filter(function (p) { return p.active && p.team === 'weproject' && !isCommander(p); }) // WeProject players only (no commanders)
     .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team }; });
 }
 
@@ -789,9 +790,13 @@ function getRows(sheetName) {
 function getPlayers() {
   return getRows('Players').map(function (p) {
     p.active = bool(p.active);
+    p.status = String(p.status || 'player').trim().toLowerCase(); // 'player' | 'commander'
     return p;
   });
 }
+
+/** Commanders count toward boss damage but earn nothing and never appear on leaderboards. */
+function isCommander(p) { return p && p.status === 'commander'; }
 
 function getConfig() {
   var map = {};
