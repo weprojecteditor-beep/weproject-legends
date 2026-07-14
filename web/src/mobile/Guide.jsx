@@ -30,7 +30,7 @@ export default function Guide({ state, role }) {
             {missions.map((m) => (
               <div key={m.missionId} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}>
                 <span className="text-sm">{m.text}</span>
-                <span className="text-sm font-bold" style={{ color: C.exp }}>+{m.exp}</span>
+                <span className="text-sm font-bold" style={{ color: C.exp }}>{m.exp > 0 ? `+${m.exp}` : "🪙"}</span>
               </div>
             ))}
           </div>

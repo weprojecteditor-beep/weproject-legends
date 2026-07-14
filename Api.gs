@@ -55,6 +55,12 @@
 var CACHE_SECONDS = 60;
 var CLASS_FAMILY_BY_ROLE = { Marketer: 'Carry', LiveHost: 'Fighter', Editor: 'Support', Salesperson: 'Slayer' };
 
+// v1.2 coin-only rewards/penalties (do NOT affect EXP / Rank / Level)
+var GROUP_SALES_MISSION_ID = 'M13';  // "Update Sales in Group by 6pm" → +5 coins per approved day
+var GROUP_SALES_COINS = 5;
+var LATE_PENALTY_FIRST = 10;         // 1st–3rd late in a month
+var LATE_PENALTY_AFTER = 20;         // 4th+ late in the same month
+
 /* ================================================================== */
 /* Routing                                                             */
 /* ================================================================== */
@@ -362,8 +368,7 @@ function getPlayer(id, pin) {
   var lvl = levelFromExp(allExp, levelTh);
   var rank = rankInfo(seasonExp, cfg);
 
-  var goldReal = goldBalanceReal(id, Math.round(allExp * goldMultiplier(lvl.level)));
-  var goldClamped = Math.max(0, goldReal);
+  var gold = goldBalanceReal(id, Math.round(allExp * goldMultiplier(lvl.level))); // may be negative (lateness)
 
   var redemptionHistory = getRows('Redemptions')
     .filter(function (rd) { return rd.player_id === id; })
@@ -391,7 +396,7 @@ function getPlayer(id, pin) {
     rank: rank.rank,
     nextRank: rank.nextRank,
     expToNextRank: rank.expToNextRank,
-    gold: goldClamped,
+    gold: gold,
     todayExp: todayExp,
     badges: badges,
     missionsToday: getMissionsToday(p, today),
@@ -399,10 +404,6 @@ function getPlayer(id, pin) {
     paceEligible: computePaceEligibility(p, mine, cfg, players),
     recentLog: recentLog
   };
-  if (goldReal < goldClamped) {
-    out.goldPendingAdjustment = true;
-    out.goldRealValue = goldReal;
-  }
   return out;
 }
 
@@ -548,14 +549,14 @@ function redeem(playerId, pin, itemId) {
     var lvlR = levelFromExp(allExp, buildLevelThresholds(getConfig())).level;
     var goldReal = goldBalanceReal(playerId, Math.round(allExp * goldMultiplier(lvlR)));
     var price = num(item.price);
-    if (Math.max(0, goldReal) < price) return { ok: false, error: 'Not enough Gold' };
+    if (goldReal < price) return { ok: false, error: 'Not enough Gold' };
 
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Redemptions');
     sheet.appendRow([new Date(), playerId, itemId, item.name, price, 'pending']);
 
     CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'shop:weproject', 'shop:wellous']);
 
-    return { ok: true, message: 'Redeemed! Pending GM approval', goldRemaining: Math.max(0, goldReal) - price };
+    return { ok: true, message: 'Redeemed! Pending GM approval', goldRemaining: goldReal - price };
   } finally {
     lock.releaseLock();
   }
@@ -657,13 +658,53 @@ function setConfigValue(key, value) {
 
 function normalizeTeam(t) { return (t === 'wellous') ? 'wellous' : 'weproject'; }
 
-/** Gold = earned Gold (EXP × skin multiplier) − redemptions that aren't rejected. */
+/**
+ * Gold = earned Gold (EXP × skin multiplier) − redemptions that aren't rejected
+ *        + coin-only adjustments (group-sales bonus − lateness penalty).
+ * Coin adjustments never touch EXP / Rank / Level. Balance MAY go negative.
+ */
 function goldBalanceReal(playerId, earnedGold) {
   var spent = 0;
   getRows('Redemptions').forEach(function (rd) {
     if (rd.player_id === playerId && String(rd.status) !== 'rejected') spent += num(rd.gold_cost);
   });
-  return earnedGold - spent;
+  return earnedGold - spent + coinAdjustments(playerId);
+}
+
+/** Coin-only net for a player: + group-sales bonus, − lateness penalty. */
+function coinAdjustments(playerId) {
+  return groupSalesCoins(playerId) + latenessCoins(playerId);
+}
+
+/** +5 coins for each approved "Update Sales in Group" (M13) mission-log row. */
+function groupSalesCoins(playerId) {
+  var n = 0;
+  getRows('Mission_Log').forEach(function (l) {
+    if (l.player_id === playerId && String(l.mission_id) === GROUP_SALES_MISSION_ID && String(l.status) === 'approved') n++;
+  });
+  return n * GROUP_SALES_COINS;
+}
+
+/**
+ * Lateness penalty (negative). Per calendar month: 1st–3rd late = −10 each,
+ * 4th+ = −20 each; the tier resets on the 1st. Reads the Lateness tab
+ * (date, player_id, …). Past months stay deducted (history), tier just resets.
+ */
+function latenessCoins(playerId) {
+  var byMonth = {};
+  getRows('Lateness').forEach(function (r) {
+    if (r.player_id !== playerId) return;
+    var d = dateStr(r.date);
+    if (!d) return;
+    var key = d.slice(0, 7); // yyyy-MM
+    byMonth[key] = (byMonth[key] || 0) + 1;
+  });
+  var penalty = 0;
+  Object.keys(byMonth).forEach(function (key) {
+    var c = byMonth[key];
+    penalty += Math.min(c, 3) * LATE_PENALTY_FIRST + Math.max(0, c - 3) * LATE_PENALTY_AFTER;
+  });
+  return -penalty;
 }
 
 /** Skin bonus: leveling up multiplies the Gold you earn from EXP. */

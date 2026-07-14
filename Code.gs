@@ -77,6 +77,7 @@ function setupWeprojectLegends() {
   buildMissionLog(ss);
   buildCrystalWar(ss);
   buildBuffs(ss);
+  buildLateness(ss);
   buildGuide(ss);
 
   ss.setActiveSheet(ss.getSheetByName('Guide'));
@@ -578,8 +579,10 @@ function buildMissions(ss) {
     ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true],
     ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true],
 
-    // Everyone (role = Any) — shows for all roles
-    ['M13', 'weproject', 'Any',      'Update Sales in Group by 6pm daily',                  10, 9, true]
+    // Everyone (role = Any) — COIN reward (+5 coins/day), not EXP. Credited automatically
+    // when the GM approves this mission in Mission_Log; does NOT count toward "All Daily
+    // Missions Complete". exp = 0 so it never adds EXP.
+    ['M13', 'weproject', 'Any',      'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true]
   ];
 
   var sheet = makeSheet(ss, 'Missions', headers, rows);
@@ -627,6 +630,17 @@ function buildBuffs(ss) {
   var sheet = makeSheet(ss, 'Buffs', headers, rows);
   applyDropdown(sheet, 2, GROW_ROWS, BUFF_TYPES);
   applyDropdown(sheet, 3, GROW_ROWS, BUFF_STATUSES);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tab: Lateness  (GM logs 1 row per late arrival — coins-only penalty) */
+/* ------------------------------------------------------------------ */
+
+function buildLateness(ss) {
+  // The API auto-deducts coins: −10 for the 1st–3rd late each month, −20 for
+  // the 4th+ (tier resets on the 1st). Coins only — never EXP/Rank/Level.
+  var headers = ['date', 'player_id', 'note'];
+  makeSheet(ss, 'Lateness', headers, []); // GM adds a row each time someone is late
 }
 
 /* ------------------------------------------------------------------ */
@@ -692,6 +706,11 @@ function buildGuide(ss) {
     { r: ['RM 5,000 in a day', '80 coins', '', '', ''], t: 'note' },
     { r: ['RM 10,000 in a day', '200 coins', '', '', ''], t: 'note' },
     { r: ['Highest tier only — a RM10k day earns 200 (not 50+80+200). Log ONE "milestone" row in EXP_Log for the top tier reached.', '', '', '', ''], t: 'note' },
+    { r: blank, t: 'note' },
+
+    { r: ['COIN-ONLY (never touch EXP / Rank / Level)', '', '', '', ''], t: 'section' },
+    { r: ['• "Update Sales in Group by 6pm" = +5 COINS/day. Auto-credited when you APPROVE that mission in Mission_Log. Does NOT count toward "All Daily Missions Complete +30".', '', '', '', ''], t: 'note' },
+    { r: ['• Lateness: in the Lateness tab, add a row (date + player_id) each time someone is late. Coins auto-deduct −10 for the 1st–3rd late that month, −20 for the 4th+. Tier resets on the 1st. Balance may go negative. Commanders are exempt (do not log them).', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
     { r: ['TV FEED TAGS (post standout moments to Achievements_Feed)', '', '', '', ''], t: 'section' },
@@ -1114,6 +1133,29 @@ function seedJulyDamage() {
 }
 
 /**
+ * v1.2 (2026-07): coin-only rule changes on a LIVE sheet (non-destructive).
+ *   • "Update Sales in Group" mission → +5 COINS/day (exp set to 0; coins are
+ *     auto-credited when the GM approves that mission in Mission_Log).
+ *   • Creates a Lateness tab — GM logs date + player_id per late arrival; the API
+ *     auto-deducts coins (−10 for 1st–3rd/month, −20 for 4th+; resets on the 1st).
+ *   • Refreshes the Guide. Config / EXP_Log / Players are untouched.
+ * Run THIS once after pasting the new code, then Deploy → New version.
+ */
+function applyV12() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildMissions(ss);
+  var madeTab = !ss.getSheetByName('Lateness');
+  if (madeTab) buildLateness(ss);
+  buildGuide(ss);
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
+  uiAlert_('v1.2 applied',
+    '"Update Sales in Group by 6pm" is now +5 COINS/day (coins only, no EXP) — credited when you APPROVE that mission in Mission_Log.\n\n' +
+    (madeTab ? 'Created the "Lateness" tab. ' : 'Lateness tab already exists. ') +
+    'Add a row (date + player_id) each time someone is late — coins auto-deduct −10 (1st–3rd/month) or −20 (4th+), resets on the 1st. Coins only, balance may go negative. Commanders: do NOT log them.\n\n' +
+    'Deploy → New version to push the API.');
+}
+
+/**
  * SIMPLIFY THE SHEET for the GM. Builds a plain-English HOME tab, orders +
  * colors the tabs used day-to-day, and HIDES the setup tabs (not deleted —
  * unhide anytime via the ☰ "All Sheets" icon or View → Hidden sheets).
@@ -1129,6 +1171,7 @@ function simplifySheet() {
     ['Achievements_Feed', '#F5C542'],
     ['Redemptions',       '#EA4335'],
     ['Mission_Log',       '#EA4335'],
+    ['Lateness',          '#EA4335'],
     ['Players',           '#9AA0A6'],
     ['Guide',             '#34A853']
   ];

@@ -178,7 +178,7 @@ export default function Hero({ player, onMission }) {
                     {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · EXP GRANTED</div>}
                     {(!st || st === "todo") && <div style={{ fontSize: 9, color: C.dim, marginTop: 2 }}>tap to submit</div>}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>{busy ? "…" : "+" + m.exp}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>{busy ? "…" : (m.exp > 0 ? "+" + m.exp : "🪙")}</span>
                 </button>
               );
             })}
