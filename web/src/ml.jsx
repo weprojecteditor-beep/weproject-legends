@@ -33,11 +33,37 @@ export const CLASSES = {
 };
 export const HERO_IMG = Object.keys(CLASSES).reduce((m, k) => { m[k] = CLASSES[k].img; return m; }, {});
 export const CLASS_COLOR = Object.keys(CLASSES).reduce((m, k) => { m[k] = CLASSES[k].color; return m; }, {});
-export const ROLE_DEFAULT_CLASS = { Marketer: "Marksman", LiveHost: "Fighter", Editor: "Assassin", Salesperson: "Marksman" };
+export const ROLE_DEFAULT_CLASS = { Marketer: "Marksman", LiveHost: "Fighter", Editor: "Support", Salesperson: "Marksman" };
+
+// Each of the 9 hero classes maps to one of the 5 portrait art sets we have
+// (marksman/assassin/fighter/tank/support), each rendered in male|female ×
+// general|elite|legend under /avatars/{base}_{gender}_{tier}.png.
+export const CLASS_ART = {
+  Marksman: "marksman", Mage: "assassin", Assassin: "assassin",
+  Fighter: "fighter", Tank: "tank", Berserker: "fighter",
+  Support: "support", Bard: "support", Summoner: "support",
+};
 
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 export const heroClassOf = (heroClass, role) => heroClass || ROLE_DEFAULT_CLASS[role] || "Fighter";
 export const classOf = (heroClass, role) => CLASSES[heroClassOf(heroClass, role)] || CLASSES.Fighter;
+
+// Level → skin tier (matches the Gold multiplier tiers: Lv10 Elite, Lv20 Legend).
+export const tierFromLevel = (level) => (level >= 20 ? "legend" : level >= 10 ? "elite" : "general");
+
+/**
+ * Resolve a player's portrait from class + gender + tier.
+ * `tier` accepts a tier string ("general"/"elite"/"legend") or a numeric level.
+ * Falls back to female art when gender is unknown (API gender_pref not set yet).
+ */
+export const heroImg = (heroClass, role, gender, tier) => {
+  const base = CLASS_ART[heroClassOf(heroClass, role)] || "fighter";
+  const g = String(gender).toLowerCase() === "male" ? "male" : "female";
+  const t = typeof tier === "number" ? tierFromLevel(tier)
+    : ["general", "elite", "legend"].indexOf(String(tier).toLowerCase()) !== -1 ? String(tier).toLowerCase()
+    : "general";
+  return `/avatars/${base}_${g}_${t}.png`;
+};
 
 export function Frame({ children, glow, pad = 14, style }) {
   return (
@@ -88,12 +114,13 @@ export function RankChip({ rank, small }) {
 export function Avatar({ p, size = 52 }) {
   const cls = classOf(p.heroClass, p.role);
   const ring = RANKS[p.rank] || C.dim;
+  const img = heroImg(p.heroClass, p.role, p.gender, p.level);
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <div style={{ position: "absolute", inset: -2, background: `conic-gradient(from 200deg, ${ring}, ${ring}00 40%, ${ring} 65%, ${ring})`, clipPath: HEX }} />
       <div style={{ position: "absolute", inset: 1, background: `radial-gradient(circle at 50% 30%, ${cls.color}30 0%, #060A1E 75%)`, clipPath: HEX, overflow: "hidden" }}>
-        {cls.img
-          ? <img src={cls.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />
+        {img
+          ? <img src={img} alt="" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = cls.img; }} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 12%" }} />
           : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: size * 0.42 }}>{cls.icon}</div>}
       </div>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", boxShadow: `0 0 16px ${ring}66`, clipPath: HEX }} />

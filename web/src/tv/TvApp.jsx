@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, HEX, CLIP_SM, HERO_IMG, ROLE_DEFAULT_CLASS, fmt } from "../ml.jsx";
+import { C, HEX, CLIP_SM, heroImg, fmt } from "../ml.jsx";
 import { getTv } from "../api.js";
 import { usePolling } from "../hooks.js";
 import { Loading } from "../ui.jsx";
@@ -8,7 +8,7 @@ const DATA_MS = 30000;
 const SCREEN_MS = 12000;
 const SCREENS = 3;
 
-const imgFor = (heroClass, role) => HERO_IMG[heroClass || ROLE_DEFAULT_CLASS[role] || "Fighter"];
+const imgFor = (p) => heroImg(p.heroClass, p.role, p.gender, p.level);
 
 // scattered twinkle positions (left%, top%, size-vw, delay-s)
 const SPARKS = [
@@ -146,7 +146,7 @@ function TopDamageScreen({ rows, boss }) {
   const list = (rows || []).filter((p) => p.damage > 0);
   const mvp = list[0];
   const rest = list.slice(1, 6);
-  const mvpImg = mvp && imgFor(mvp.heroClass, mvp.role);
+  const mvpImg = mvp && imgFor(mvp);
   return (
     <div style={{ display: "flex", gap: "2.5vw", height: "100%" }}>
       {/* MVP big hero spotlight */}
@@ -180,7 +180,7 @@ function TopDamageScreen({ rows, boss }) {
           {rest.map((p, i) => (
             <div key={p.playerId} style={{ display: "flex", alignItems: "center", gap: "1.4vw", clipPath: CLIP_SM, background: C.panelSoft, border: `2px solid ${C.line}`, padding: "1.6vh 1.4vw", minWidth: 0 }}>
               <div style={{ fontSize: "2.4vw", fontWeight: 900, color: C.gold, fontFamily: "'Chakra Petch',sans-serif", width: "3vw", textAlign: "center", textShadow: `0 0 1vh ${C.gold}66` }}>{i + 2}</div>
-              <HexImg heroClass={p.heroClass} role={p.role} col={C.cyan} />
+              <HexImg p={p} col={C.cyan} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, fontSize: "2.1vw", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                 <div style={{ fontSize: "1.3vw", color: C.dim }}>{p.role}</div>
@@ -216,8 +216,8 @@ function FeedScreen({ feed }) {
   );
 }
 
-function HexImg({ heroClass, role, col }) {
-  const img = imgFor(heroClass, role);
+function HexImg({ p, col }) {
+  const img = imgFor(p);
   return (
     <div style={{ position: "relative", width: "5vw", height: "5vw", flexShrink: 0 }}>
       <div style={{ position: "absolute", inset: 0, clipPath: HEX, background: `radial-gradient(circle at 50% 30%, ${col}40, #060A1E 75%)`, overflow: "hidden" }}>

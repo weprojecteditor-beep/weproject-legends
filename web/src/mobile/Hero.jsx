@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
+import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, heroImg, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
 const SKIN_TIERS = [
   { tier: "GENERAL", unlock: 1, col: "#8C96C4", perk: "" },
@@ -51,9 +51,9 @@ export default function Hero({ player, onMission }) {
         <div style={{ position: "relative", minHeight: 280, background: `radial-gradient(ellipse 90% 70% at 50% 20%, ${cls.color}26 0%, transparent 60%)` }}>
           <div style={{ position: "absolute", inset: 0, opacity: 0.35,
             background: `conic-gradient(from 180deg at 50% 15%, transparent 0deg, ${cls.color}14 8deg, transparent 16deg, transparent 28deg, ${cls.color}10 36deg, transparent 44deg, transparent 60deg, ${cls.color}14 68deg, transparent 76deg)` }} />
-          {cls.img
-            ? <img src={cls.img} alt="" style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", height: 215, filter: `drop-shadow(0 0 30px ${cls.color}77)` }} />
-            : <div style={{ position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", fontSize: 110, filter: `drop-shadow(0 0 30px ${cls.color})` }}>{cls.icon}</div>}
+          <img src={heroImg(player.heroClass, player.role, player.gender, skin.toLowerCase())} alt=""
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = cls.img; }}
+            style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", height: 215, filter: `drop-shadow(0 0 30px ${cls.color}77)` }} />
           <div style={{ position: "absolute", top: 10, left: 10 }}><RankChip rank={player.rank} /></div>
           <div style={{ position: "absolute", top: 10, right: 10, textAlign: "right" }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: cls.color, letterSpacing: "0.14em", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 12px ${cls.color}` }}>
@@ -99,9 +99,9 @@ export default function Hero({ player, onMission }) {
                 background: equipped ? `linear-gradient(180deg,${s.col}22,${s.col}08)` : C.panelSoft,
                 border: `1px solid ${equipped ? s.col : C.line}`, textAlign: "center", position: "relative" }}>
                 <div style={{ width: 56, height: 56, margin: "0 auto 6px", position: "relative" }}>
-                  {cls.img
-                    ? <img src={cls.img} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: owned ? `drop-shadow(0 0 10px ${s.col}AA)` : "grayscale(1) brightness(0.5)" }} />
-                    : <div style={{ fontSize: 38, filter: owned ? "none" : "grayscale(1) brightness(0.5)" }}>{cls.icon}</div>}
+                  <img src={heroImg(player.heroClass, player.role, player.gender, s.tier.toLowerCase())} alt=""
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = cls.img; }}
+                    style={{ width: "100%", height: "100%", objectFit: "contain", filter: owned ? `drop-shadow(0 0 10px ${s.col}AA)` : "grayscale(1) brightness(0.5)" }} />
                   {!owned && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🔒</div>}
                 </div>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: owned ? s.col : C.dimmer, fontFamily: "'Chakra Petch',sans-serif" }}>{s.tier}</div>

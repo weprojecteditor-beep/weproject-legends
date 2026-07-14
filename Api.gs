@@ -273,6 +273,7 @@ function getDamageRanking(players, expApproved, cfg, levelTh, team) {
       return {
         playerId: p.player_id, name: p.name, role: p.role,
         heroClass: p.hero_class || '',
+        gender: p.gender_pref || '',
         rank: rankInfo(seasonExp[p.player_id] || 0, cfg).rank,
         level: levelFromExp(allExp[p.player_id] || 0, levelTh).level,
         damage: dmg[p.player_id] || 0
@@ -298,7 +299,7 @@ function getCreativeRanking(players, expApproved, team) {
     })
     .map(function (p) {
       var a = byPlayer[p.player_id];
-      return { playerId: p.player_id, name: p.name, role: p.role, heroClass: p.hero_class || '', winningCount: a.winning, highCtrCount: a.highCtr };
+      return { playerId: p.player_id, name: p.name, role: p.role, heroClass: p.hero_class || '', gender: p.gender_pref || '', winningCount: a.winning, highCtrCount: a.highCtr };
     })
     .sort(function (a, b) { return (b.winningCount - a.winningCount) || (b.highCtrCount - a.highCtrCount); });
 }
@@ -386,6 +387,7 @@ function getPlayer(id, pin) {
     role: p.role,
     team: p.team,
     status: p.status,
+    gender: p.gender_pref || '',
     avatar: p.avatar,
     heroClass: p.hero_class || '',
     classFamily: CLASS_FAMILY_BY_ROLE[p.role] || '',
@@ -492,7 +494,7 @@ function getRoster() {
   // from the leaderboards themselves (see getDamageRanking/getCreativeRanking).
   return getPlayers()
     .filter(function (p) { return p.active && p.team === 'weproject'; })
-    .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team, status: p.status }; });
+    .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team, status: p.status, gender: p.gender_pref || '', heroClass: p.hero_class || '' }; });
 }
 
 /* ================================================================== */

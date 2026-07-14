@@ -195,7 +195,7 @@ function ChooseClass({ player, pin, onDone }) {
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
                   clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%,0 6px)",
                   background: sel ? `${col}1E` : C.panelSoft, border: `1px solid ${sel ? col : C.line}`, color: C.text }}>
-                <Avatar p={{ heroClass: h, role: player.role, rank: player.rank }} size={44} />
+                <Avatar p={{ heroClass: h, role: player.role, rank: player.rank, gender }} size={44} />
                 <div style={{ fontSize: 10, fontWeight: 800, color: sel ? col : C.dim, fontFamily: "'Chakra Petch',sans-serif" }}>{h}</div>
               </button>
             );
