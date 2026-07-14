@@ -47,11 +47,13 @@ var HERO_CLASS_BY_ROLE = {
 
 var PLAYER_STATUSES = ['player', 'commander']; // commander = sales count toward boss, but no EXP/coins/rank and hidden from leaderboards
 
-// Commanders (team leads): [name, role, avatar]. Added as P017+ with status=commander.
+// Commanders (team leads + boss): [name, role, avatar]. Added as P017+ with status=commander.
+// They log in to view all data, count toward the boss, but earn nothing and stay off leaderboards.
 var COMMANDERS = [
   ['Jeanette', 'Marketer', '👑'],
   ['Haikal',   'Marketer', '👑'],
-  ['Chloe',    'LiveHost', '👑']
+  ['Chloe',    'LiveHost', '👑'],
+  ['Boss',     'Marketer', '👑']   // rename in the Players tab to the boss's name if you like
 ];
 
 var GROW_ROWS = 2000; // apply validation this many rows down for sheets that grow

@@ -26,7 +26,7 @@ export default function Login({ onLogin }) {
     try {
       const p = await getPlayer(hero.playerId, fullPin);
       setPlayer(p);
-      setStep(p.heroClass ? "welcome" : "class");
+      setStep((p.status === "commander" || p.heroClass) ? "welcome" : "class"); // commanders skip class pick
     } catch (e) {
       setErr("Wrong PIN, try again"); setPin("");
     } finally { setBusy(false); }
@@ -39,24 +39,34 @@ export default function Login({ onLogin }) {
     if (next.length === 4) tryPin(next);
   };
   const onBackspace = () => !busy && setPin((p) => p.slice(0, -1));
-  const finishLogin = (hc) => onLogin({ id: hero.playerId, pin, name: player.name, team: player.team, role: player.role, heroClass: hc });
+  const finishLogin = (hc) => onLogin({ id: hero.playerId, pin, name: player.name, team: player.team, role: player.role, heroClass: hc, status: player.status });
 
   if (step === "splash") return <Splash onEnter={() => setStep("select")} />;
   if (roster === null) return <Loading />;
 
   if (step === "select") {
+    const players = roster.filter((p) => p.status !== "commander");
+    const leads = roster.filter((p) => p.status === "commander");
+    const Btn = (p) => {
+      const cmd = p.status === "commander";
+      return (
+        <button key={p.playerId} onClick={() => pickHero(p)}
+          style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
+            background: cmd ? `${C.gold}12` : C.panelSoft, border: `1px solid ${cmd ? C.gold + "66" : C.line}`, padding: "8px 12px", color: C.text, textAlign: "left" }}>
+          <Avatar p={p} size={38} />
+          <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{p.name}</span>
+          <span style={{ fontSize: 10, color: cmd ? C.gold : C.dim, fontWeight: cmd ? 800 : 400 }}>{cmd ? "COMMANDER" : p.role}</span>
+        </button>
+      );
+    };
     return (
-      <Shell title="SELECT YOUR HERO" subtitle="WEPROJECT · 16 heroes">
+      <Shell title="SELECT YOUR HERO" subtitle="WEPROJECT LEGENDS">
         <div style={{ display: "flex", flexDirection: "column", gap: 7, maxHeight: "62vh", overflowY: "auto" }}>
-          {roster.map((p) => (
-            <button key={p.playerId} onClick={() => pickHero(p)}
-              style={{ display: "flex", alignItems: "center", gap: 10, clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
-                background: C.panelSoft, border: `1px solid ${C.line}`, padding: "8px 12px", color: C.text, textAlign: "left" }}>
-              <Avatar p={p} size={38} />
-              <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{p.name}</span>
-              <span style={{ fontSize: 10, color: C.dim }}>{p.role}</span>
-            </button>
-          ))}
+          {players.map(Btn)}
+          {leads.length > 0 && (
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: C.gold, fontFamily: "'Chakra Petch',sans-serif", margin: "10px 2px 2px" }}>👑 TEAM LEADS · VIEW ALL DATA</div>
+          )}
+          {leads.map(Btn)}
         </div>
       </Shell>
     );

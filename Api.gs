@@ -486,9 +486,12 @@ function findEarliestSeasonThresholdCrosser(players, thresholdExp, seasonStart, 
 /* ================================================================== */
 
 function getRoster() {
+  // Players + commanders both appear in login (commanders = view-all-data logins,
+  // grouped separately by the app via `status`). Commanders are still excluded
+  // from the leaderboards themselves (see getDamageRanking/getCreativeRanking).
   return getPlayers()
-    .filter(function (p) { return p.active && p.team === 'weproject' && !isCommander(p); }) // WeProject players only (no commanders)
-    .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team }; });
+    .filter(function (p) { return p.active && p.team === 'weproject'; })
+    .map(function (p) { return { playerId: p.player_id, name: p.name, role: p.role, team: p.team, status: p.status }; });
 }
 
 /* ================================================================== */

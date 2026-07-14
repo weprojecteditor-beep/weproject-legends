@@ -61,6 +61,7 @@ function Shell({ auth, onLogout }) {
 
   const gold = player.data?.gold ?? 0;
   const teamCol = TEAM_COLORS[auth.team] || C.gold;
+  const isCommander = auth.status === "commander"; // team leads / boss: view-all-data login
 
   const doRedeem = async (item) => {
     try {
@@ -84,12 +85,17 @@ function Shell({ auth, onLogout }) {
   if (bootLoading && !state.error && !player.error && !shop.error) return <Loading />;
 
   const syncError = state.error || player.error || shop.error;
-  const tabs = [
-    { id: "battle", label: "⚔ Battle" },
-    { id: "hero", label: "🧙 Hero" },
-    { id: "guide", label: "📜 Guide" },
-    { id: "shop", label: "🛒 Shop" },
-  ];
+  const tabs = isCommander
+    ? [
+        { id: "battle", label: "⚔ Overview" },
+        { id: "guide", label: "📜 Guide" },
+      ]
+    : [
+        { id: "battle", label: "⚔ Battle" },
+        { id: "hero", label: "🧙 Hero" },
+        { id: "guide", label: "📜 Guide" },
+        { id: "shop", label: "🛒 Shop" },
+      ];
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", color: C.text, fontFamily: "'Inter', sans-serif", position: "relative",
@@ -108,12 +114,15 @@ function Shell({ auth, onLogout }) {
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", fontFamily: "'Chakra Petch',sans-serif" }}>
               <span style={{ color: C.cyan }}>WEPROJECT</span> <span style={{ color: C.gold }}>·</span> <span style={{ color: C.hp }}>WORLD BOSS</span>
               <span style={{ color: C.dim, fontWeight: 600 }}> · {auth.name}</span>
+              {isCommander && <span style={{ color: C.gold, fontWeight: 800 }}> · COMMANDER</span>}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: C.goldHi, background: `linear-gradient(180deg,${C.gold}25,${C.gold}0A)`, border: `1px solid ${C.gold}66`, clipPath: CLIP_SM, padding: "5px 12px", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 12px ${C.gold}` }}>
-              🪙 {fmt(gold)}
-            </div>
+            {!isCommander && (
+              <div style={{ fontSize: 13, fontWeight: 900, color: C.goldHi, background: `linear-gradient(180deg,${C.gold}25,${C.gold}0A)`, border: `1px solid ${C.gold}66`, clipPath: CLIP_SM, padding: "5px 12px", fontFamily: "'Chakra Petch',sans-serif", textShadow: `0 0 12px ${C.gold}` }}>
+                🪙 {fmt(gold)}
+              </div>
+            )}
             <button onClick={onLogout} style={{ fontSize: 11, color: C.dim, background: C.panel, border: `1px solid ${C.line}`, clipPath: CLIP_SM, padding: "4px 9px" }}>Exit</button>
           </div>
         </div>
