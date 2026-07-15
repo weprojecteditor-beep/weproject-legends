@@ -257,6 +257,30 @@ function sumTeamRevenueInRange(players, expApproved, team, startStr, endStr) {
 /* Rankings + feed                                                     */
 /* ================================================================== */
 
+/**
+ * Approved daily missions grant their configured EXP (Missions.exp) — so approving
+ * a mission in Mission_Log actually pays the player, with no separate EXP_Log entry.
+ * Coins-only missions (M13/M14/M15, exp 0) add nothing here; they pay via
+ * groupSalesCoins instead, so there is no double count.
+ * Returns { playerId: { all, season, today } } (EXP totals).
+ */
+function approvedMissionExp(seasonStart, seasonEnd, today) {
+  var mexp = {};
+  getRows('Missions').forEach(function (m) { mexp[String(m.mission_id)] = num(m.exp); });
+  var out = {};
+  getRows('Mission_Log').forEach(function (l) {
+    if (String(l.status) !== 'approved') return;
+    var e = mexp[String(l.mission_id)] || 0;
+    if (!e) return;
+    var d = dateStr(l.date), pid = l.player_id;
+    var o = out[pid] || (out[pid] = { all: 0, season: 0, today: 0 });
+    o.all += e;
+    if (d >= seasonStart && d <= seasonEnd) o.season += e;
+    if (d === today) o.today += e;
+  });
+  return out;
+}
+
 /** Players ranked by their season revenue (= damage dealt to the boss). */
 function getDamageRanking(players, expApproved, cfg, levelTh, team) {
   var sw = seasonWindow(cfg);
@@ -267,6 +291,11 @@ function getDamageRanking(players, expApproved, cfg, levelTh, team) {
     if (d >= seasonStart && d <= seasonEnd) dmg[r.player_id] = (dmg[r.player_id] || 0) + num(r.amount_rm); // damage on this month's boss
     allExp[r.player_id] = (allExp[r.player_id] || 0) + num(r.exp);
     if (d >= seasonStart && d <= seasonEnd) seasonExp[r.player_id] = (seasonExp[r.player_id] || 0) + num(r.exp);
+  });
+  var mex = approvedMissionExp(seasonStart, seasonEnd, todayStr()); // approved daily missions add EXP
+  Object.keys(mex).forEach(function (pid) {
+    allExp[pid] = (allExp[pid] || 0) + mex[pid].all;
+    seasonExp[pid] = (seasonExp[pid] || 0) + mex[pid].season;
   });
   return players.filter(function (p) { return p.active && p.team === team && !isCommander(p); }) // commanders excluded from the board
     .map(function (p) {
@@ -365,6 +394,9 @@ function getPlayer(id, pin) {
     var cat = String(r.category || '').toLowerCase();
     if ((cat === 'milestone' || cat === 'achievement' || cat === 'mvp') && r.item) badges.push(String(r.item));
   }
+
+  var mex = approvedMissionExp(seasonStart, seasonEnd, today)[id]; // approved daily missions add EXP/coins
+  if (mex) { allExp += mex.all; seasonExp += mex.season; todayExp += mex.today; }
 
   var lvl = levelFromExp(allExp, levelTh);
   var rank = rankInfo(seasonExp, cfg);
@@ -548,6 +580,8 @@ function redeem(playerId, pin, itemId) {
 
     var allExp = 0;
     getRows('EXP_Log').forEach(function (r) { if (r.player_id === playerId && isApproved(r)) allExp += num(r.exp); });
+    var mexR = approvedMissionExp('0000-01-01', '9999-12-31', todayStr())[playerId]; // approved daily missions add EXP
+    if (mexR) allExp += mexR.all;
     var lvlR = levelFromExp(allExp, buildLevelThresholds(getConfig())).level;
     var goldReal = goldBalanceReal(playerId, Math.round(allExp * goldMultiplier(lvlR)));
     var price = num(item.price);
