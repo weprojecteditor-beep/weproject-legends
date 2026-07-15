@@ -711,7 +711,7 @@ function buildGuide(ss) {
     { r: blank, t: 'note' },
 
     { r: ['COIN-ONLY (never touch EXP / Rank / Level)', '', '', '', ''], t: 'section' },
-    { r: ['• "Update Sales in Group by 6pm" = +5 COINS/day. Auto-credited when you APPROVE that mission in Mission_Log. Does NOT count toward "All Daily Missions Complete +30".', '', '', '', ''], t: 'note' },
+    { r: ['• "Update Sales in Group by 6pm" (Marketer/LiveHost) / "Update task report in group by 6pm" (Editor) = +5 COINS/day. Auto-credited when you APPROVE that mission in Mission_Log. Does NOT count toward "All Daily Missions Complete +30".', '', '', '', ''], t: 'note' },
     { r: ['• Lateness: in the Lateness tab, add a row (date + player_id) each time someone is late. Coins auto-deduct −10 for the 1st–3rd late that month, −20 for the 4th+. Tier resets on the 1st. Balance may go negative. Commanders are exempt (do not log them).', '', '', '', ''], t: 'note' },
     { r: blank, t: 'note' },
 
@@ -829,7 +829,7 @@ function enableSmartLogging() {
     ['RM3k per live session', 'action', 25],
     ['Low returns (<=5 this month)', 'action', 15],
     ['All daily missions complete', 'action', 30],
-    ['Editor: Winning Creative Production', 'achievement', 50],
+    ['Editor: Winning Creative Production', 'achievement', 80],
     ['Editor: All Video Purchase (30/week)', 'action', 30]
   ];
   p.getRange(2, 1, presets.length, 3).setValues(presets);
@@ -1202,6 +1202,7 @@ function simplifySheet() {
     'Achievements_Feed — TV highlights\n' +
     'Redemptions — approve shop redeems\n' +
     'Mission_Log — approve missions\n' +
+    'Lateness — log late arrivals\n' +
     'Players — people & PINs\n' +
     'Guide — full rules reference\n\n' +
     'Setup tabs (Shop, Actions, Missions, Config, Crystal_War, Buffs, Presets) are HIDDEN, not deleted. ' +
@@ -1226,6 +1227,7 @@ function buildHomeTab(ss) {
     { t: 'kv', a: 'Achievements_Feed', b: 'Highlights for the TV screen.' },
     { t: 'kv', a: 'Redemptions', b: 'Shop redeems waiting for your approval.' },
     { t: 'kv', a: 'Mission_Log', b: 'Missions players submitted, waiting for approval.' },
+    { t: 'kv', a: 'Lateness', b: 'Add a row when someone is late — coins auto-deduct.' },
     { t: 'kv', a: 'Players', b: 'Everyone on the team + their 4-digit PINs.' },
     { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how the monthly gauntlet works.' },
     { t: 'blank',   a: '', b: '' },
