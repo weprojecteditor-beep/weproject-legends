@@ -1,4 +1,5 @@
 import { C, fmt } from "../theme.js";
+import { coinReward } from "../ml.jsx";
 import { Panel, SectionTitle } from "../ui.jsx";
 
 const CATEGORY_LABEL = {
@@ -30,7 +31,7 @@ export default function Guide({ state, role }) {
             {missions.map((m) => (
               <div key={m.missionId} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}>
                 <span className="text-sm">{m.text}</span>
-                <span className="text-sm font-bold" style={{ color: C.exp }}>{m.exp > 0 ? `+${m.exp}` : "🪙"}</span>
+                <span className="text-sm font-bold" style={{ color: m.exp > 0 ? C.exp : C.gold }}>{m.exp > 0 ? `+${m.exp}` : (coinReward(m.text) != null ? `🪙 +${coinReward(m.text)}` : "🪙")}</span>
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, heroImg, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
+import { C, Frame, Eyebrow, RoleTag, RankChip, WarBar, Badge, badgeMeta, classOf, heroImg, coinReward, RANKS, GOLD_GRAD, CLIP_SM, fmt } from "../ml.jsx";
 
 const SKIN_TIERS = [
   { tier: "GENERAL", unlock: 1, col: "#8C96C4", perk: "" },
@@ -178,7 +178,7 @@ export default function Hero({ player, onMission }) {
                     {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · EXP GRANTED</div>}
                     {(!st || st === "todo") && <div style={{ fontSize: 9, color: C.dim, marginTop: 2 }}>tap to submit</div>}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.cyan, fontFamily: "'Chakra Petch',sans-serif" }}>{busy ? "…" : (m.exp > 0 ? "+" + m.exp : "🪙")}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : (m.exp > 0 ? C.cyan : C.gold), fontFamily: "'Chakra Petch',sans-serif", whiteSpace: "nowrap" }}>{busy ? "…" : (m.exp > 0 ? "+" + m.exp : (coinReward(m.text) != null ? "🪙 +" + coinReward(m.text) : "🪙"))}</span>
                 </button>
               );
             })}

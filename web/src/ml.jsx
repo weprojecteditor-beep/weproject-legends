@@ -45,6 +45,13 @@ export const CLASS_ART = {
 };
 
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+
+// Coins-only missions (exp = 0) carry their reward in the text, e.g.
+// "… (+5 coins/day)". Pull that number so the badge can show 🪙 +5.
+export const coinReward = (text) => {
+  const m = /\+?\s*(\d+)\s*coin/i.exec(text || "");
+  return m ? Number(m[1]) : null;
+};
 export const heroClassOf = (heroClass, role) => heroClass || ROLE_DEFAULT_CLASS[role] || "Fighter";
 export const classOf = (heroClass, role) => CLASSES[heroClassOf(heroClass, role)] || CLASSES.Fighter;
 
