@@ -83,6 +83,9 @@ export default function Hero({ player, onMission }) {
           ) : (
             <div style={{ fontSize: 11, color: C.gold, fontFamily: "'Chakra Petch',sans-serif" }}>★ MAX RANK — {fmt(player.seasonExp)} Season EXP</div>
           )}
+          <div style={{ fontSize: 9, color: C.dimmer, textAlign: "center", marginTop: 2 }}>
+            Every <b style={{ color: C.cyan }}>1 EXP</b> you earn = <b style={{ color: C.gold }}>1 🪙 coin</b> to spend · spending never lowers your Level or Rank
+          </div>
         </div>
       </Frame>
 
@@ -175,16 +178,16 @@ export default function Hero({ player, onMission }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, color: st === "approved" ? C.dim : C.text, textDecoration: st === "approved" ? "line-through" : "none" }}>{m.text}</div>
                     {st === "pending" && <div style={{ fontSize: 9, color: C.orange, fontWeight: 800, marginTop: 2 }}>⏳ WAITING GM APPROVAL · tap to cancel</div>}
-                    {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · EXP GRANTED</div>}
+                    {st === "approved" && <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 2 }}>✓ APPROVED · 🪙 COINS ADDED</div>}
                     {(!st || st === "todo") && <div style={{ fontSize: 9, color: C.dim, marginTop: 2 }}>tap to submit</div>}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : (m.exp > 0 ? C.cyan : C.gold), fontFamily: "'Chakra Petch',sans-serif", whiteSpace: "nowrap" }}>{busy ? "…" : (m.exp > 0 ? "+" + m.exp : (coinReward(m.text) != null ? "🪙 +" + coinReward(m.text) : "🪙"))}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: st === "approved" ? C.green : C.gold, fontFamily: "'Chakra Petch',sans-serif", whiteSpace: "nowrap" }}>{busy ? "…" : "🪙 +" + (m.exp > 0 ? m.exp : (coinReward(m.text) || 0))}</span>
                 </button>
               );
             })}
           </div>
         )}
-        <div style={{ fontSize: 9, color: C.dimmer, marginTop: 9, textAlign: "center" }}>EXP is granted after GM approval · missions are managed in Google Sheets</div>
+        <div style={{ fontSize: 9, color: C.dimmer, marginTop: 9, textAlign: "center" }}>🪙 Coins are added after GM approval — every point you earn is 1 coin</div>
       </Frame>
 
       {/* ── Badges ── */}

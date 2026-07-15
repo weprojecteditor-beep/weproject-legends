@@ -21,6 +21,9 @@ export default function Guide({ state, role }) {
       <div className="text-xs text-center" style={{ color: C.dim }}>
         Rules are managed by the GM in Google Sheets — this always reflects the latest numbers.
       </div>
+      <div className="text-xs text-center rounded-xl px-3 py-2" style={{ color: C.gold, background: `${C.gold}12`, border: `1px solid ${C.gold}33` }}>
+        🪙 Every point you earn is a coin to spend — and it also levels you up. Spending never lowers your Level or Rank.
+      </div>
 
       <Panel>
         <SectionTitle>DAILY MISSIONS · {role}</SectionTitle>
@@ -31,7 +34,7 @@ export default function Guide({ state, role }) {
             {missions.map((m) => (
               <div key={m.missionId} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}>
                 <span className="text-sm">{m.text}</span>
-                <span className="text-sm font-bold" style={{ color: m.exp > 0 ? C.exp : C.gold }}>{m.exp > 0 ? `+${m.exp}` : (coinReward(m.text) != null ? `🪙 +${coinReward(m.text)}` : "🪙")}</span>
+                <span className="text-sm font-bold" style={{ color: C.gold, whiteSpace: "nowrap" }}>🪙 +{m.exp > 0 ? m.exp : (coinReward(m.text) || 0)}</span>
               </div>
             ))}
           </div>
@@ -39,7 +42,7 @@ export default function Guide({ state, role }) {
       </Panel>
 
       <Panel>
-        <SectionTitle>EXP RULES · {role}</SectionTitle>
+        <SectionTitle>EARN MORE COINS · {role}</SectionTitle>
         {actions.length === 0 ? (
           <div className="text-sm text-center py-3" style={{ color: C.dim }}>No rules configured yet.</div>
         ) : (
@@ -48,7 +51,7 @@ export default function Guide({ state, role }) {
               <div key={a.actionId} className="rounded-xl px-3 py-2" style={{ background: C.panelSoft, border: `1px solid ${C.line}` }}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{a.name}</span>
-                  <span className="text-sm font-bold" style={{ color: C.exp }}>+{a.exp}</span>
+                  <span className="text-sm font-bold" style={{ color: C.gold, whiteSpace: "nowrap" }}>🪙 +{a.exp}</span>
                 </div>
                 <div className="text-xs mt-0.5" style={{ color: C.dim }}>{a.condition}</div>
                 <div className="flex items-center gap-2 mt-1">
