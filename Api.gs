@@ -554,7 +554,7 @@ function redeem(playerId, pin, itemId) {
     if (goldReal < price) return { ok: false, error: 'Not enough Gold' };
 
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Redemptions');
-    sheet.appendRow([new Date(), playerId, itemId, item.name, price, 'pending']);
+    sheet.appendRow([new Date(), playerId, itemId, item.name, price, 'pending', p.name]); // player = readable name; id cols stay the key
 
     CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'shop:weproject', 'shop:wellous']);
 
@@ -594,7 +594,7 @@ function submitMission(playerId, pin, missionId) {
         return { ok: false, error: 'Already submitted today' };
       }
     }
-    sheet.appendRow([new Date(), playerId, missionId, 'pending']);
+    sheet.appendRow([new Date(), playerId, missionId, 'pending', p.name, mission.text_en]); // player/mission = readable, id cols stay the key
     CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous']);
     return { ok: true, message: 'Waiting GM approval', status: 'pending' };
   } finally {

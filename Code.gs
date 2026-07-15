@@ -400,7 +400,8 @@ function buildExpLog(ss) {
     'exp',        // number (can be negative for Refund clawback)
     'amount_rm',  // RM amount for Revenue rows — damage on the citadel + Damage board, else blank
     'approved',   // checkbox — only takes effect once ticked
-    'note'        // remarks
+    'note',       // remarks
+    'player'      // readable name — auto-filled from player_id by onEdit (display only)
   ];
   var sheet = makeSheet(ss, 'EXP_Log', headers, []);
   applyDropdown(sheet, 4, GROW_ROWS, CATEGORIES);
@@ -412,7 +413,8 @@ function buildExpLog(ss) {
 /* ------------------------------------------------------------------ */
 
 function buildRedemptions(ss) {
-  var headers = ['timestamp', 'player_id', 'item_id', 'item_name', 'gold_cost', 'status'];
+  // player = readable name (the API fills it on redeem). status dropdown is still column 6.
+  var headers = ['timestamp', 'player_id', 'item_id', 'item_name', 'gold_cost', 'status', 'player'];
   var sheet = makeSheet(ss, 'Redemptions', headers, []); // rows written by the API
   applyDropdown(sheet, 6, GROW_ROWS, REDEMPTION_STATUSES);
 }
@@ -507,7 +509,8 @@ function buildConfig(ss) {
 
 function buildAchievementsFeed(ss) {
   // team is derived from player_id at read time, not stored here.
-  var headers = ['timestamp', 'player_id', 'tag', 'icon', 'description', 'exp'];
+  // 'player' = readable name, auto-filled from player_id by onEdit (display only).
+  var headers = ['timestamp', 'player_id', 'tag', 'icon', 'description', 'exp', 'player'];
   makeSheet(ss, 'Achievements_Feed', headers, []); // GM populates
 }
 
@@ -516,36 +519,37 @@ function buildAchievementsFeed(ss) {
 /* ------------------------------------------------------------------ */
 
 function buildActions(ss) {
-  var headers = ['action_id', 'team', 'role', 'name_en', 'condition_en', 'exp', 'daily_cap', 'category', 'active'];
+  // 'proof' (last column) = how / where the GM verifies it. Shown in the Guide. Edit freely.
+  var headers = ['action_id', 'team', 'role', 'name_en', 'condition_en', 'exp', 'daily_cap', 'category', 'active', 'proof'];
 
   // role='Any' = applies to every role. Numbers here are starter values —
   // GM tunes freely; the Guide page reads straight from this table.
   var rows = [
     // Marketer
-    ['A01', 'weproject', 'Marketer', 'Winning Creative',        '>5 purchases with ROAS > 3',                                  80, '', 'achievement', true],
-    ['A03', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
-    ['A04', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
+    ['A01', 'weproject', 'Marketer', 'Winning Creative',        '>5 purchases with ROAS > 3',                                  80, '', 'achievement', true, 'GM checks Ads Manager (ROAS > 3)'],
+    ['A03', 'weproject', 'Marketer', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true, 'GM checks Ads Manager / orders'],
+    ['A04', 'weproject', 'Marketer', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true, 'GM checks orders'],
 
     // LiveHost / CS
-    ['A05', 'weproject', 'LiveHost', 'RM3k per Live Session',   'Achieve RM3,000 sales in one live session',                    25, 200, 'action', true],
-    ['A06', 'weproject', 'LiveHost', 'Low Returns',            'Keep monthly returned orders within 5 orders',                 15, '', 'action', true],
-    ['A07', 'weproject', 'LiveHost', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true],
-    ['A08', 'weproject', 'LiveHost', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
+    ['A05', 'weproject', 'LiveHost', 'RM3k per Live Session',   'Achieve RM3,000 sales in one live session',                    25, 200, 'action', true, 'Screenshot in live dashboard'],
+    ['A06', 'weproject', 'LiveHost', 'Low Returns',            'Keep monthly returned orders within 5 orders',                 15, '', 'action', true, 'GM checks returns report (monthly)'],
+    ['A07', 'weproject', 'LiveHost', 'Double Kill',             '10 approved purchases in a single day',                        20, '', 'action', true, 'GM checks orders'],
+    ['A08', 'weproject', 'LiveHost', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true, 'GM checks orders'],
 
     // Editor
-    ['A09', 'weproject', 'Editor',   'Winning Creative Production', 'A video you produced gets >5 purchases with ROAS > 3',      80, '', 'achievement', true],
-    ['A10', 'weproject', 'Editor',   'All Video Purchase',      '30 purchases in a week across your videos',                     30, '', 'action', true],
+    ['A09', 'weproject', 'Editor',   'Winning Creative Production', 'A video you produced gets >5 purchases with ROAS > 3',      80, '', 'achievement', true, 'GM checks with Izzi (Editor Lead) + Ads Manager'],
+    ['A10', 'weproject', 'Editor',   'All Video Purchase',      '30 purchases in a week across your videos',                     30, '', 'action', true, 'GM checks with Izzi (Editor Lead)'],
 
     // Everyone
-    ['A11', 'weproject', 'Any',      'All Daily Missions Complete', 'Completed every daily mission for your role',               30, '', 'action', true],
+    ['A11', 'weproject', 'Any',      'All Daily Missions Complete', 'Completed every daily mission for your role',               30, '', 'action', true, 'Auto — once all your daily missions are approved'],
 
     // Daily Sales Bonus ladder — Marketer & LiveHost/CS, highest tier only
-    ['A12', 'weproject', 'Marketer', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true],
-    ['A13', 'weproject', 'Marketer', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true],
-    ['A14', 'weproject', 'Marketer', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true],
-    ['A15', 'weproject', 'LiveHost', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true],
-    ['A16', 'weproject', 'LiveHost', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true],
-    ['A17', 'weproject', 'LiveHost', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true]
+    ['A12', 'weproject', 'Marketer', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true, 'GM checks daily sales report'],
+    ['A13', 'weproject', 'Marketer', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true, 'GM checks daily sales report'],
+    ['A14', 'weproject', 'Marketer', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true, 'GM checks daily sales report'],
+    ['A15', 'weproject', 'LiveHost', 'Daily Sales RM3k',        'Personal sales reach RM3,000 in a day (highest tier only)',    50, '', 'milestone', true, 'GM checks daily sales report'],
+    ['A16', 'weproject', 'LiveHost', 'Daily Sales RM5k',        'Personal sales reach RM5,000 in a day (highest tier only)',    80, '', 'milestone', true, 'GM checks daily sales report'],
+    ['A17', 'weproject', 'LiveHost', 'Daily Sales RM10k',       'Personal sales reach RM10,000 in a day (highest tier only)',  200, '', 'milestone', true, 'GM checks daily sales report']
   ];
 
   var sheet = makeSheet(ss, 'Actions', headers, rows);
@@ -560,31 +564,32 @@ function buildActions(ss) {
 /* ------------------------------------------------------------------ */
 
 function buildMissions(ss) {
-  var headers = ['mission_id', 'team', 'role', 'text_en', 'exp', 'sort', 'active'];
+  // 'proof' (last column) = how / where the GM verifies it. Shown in the Guide. Edit freely.
+  var headers = ['mission_id', 'team', 'role', 'text_en', 'exp', 'sort', 'active', 'proof'];
 
   // LiveHost / CS share the "LiveHost" role in the system (assign CS staff role = LiveHost in Players).
   var rows = [
-    ['M01', 'weproject', 'Marketer', 'Publish at least 4 ads',                              10, 1, true],
-    ['M02', 'weproject', 'Marketer', 'Submit report before 10:30am',                        5,  2, true],
-    ['M03', 'weproject', 'Marketer', 'Blast 1 audience pool',                               10, 3, true],
-    ['M04', 'weproject', 'Marketer', 'FB / IG daily posting',                               5,  4, true],
+    ['M01', 'weproject', 'Marketer', 'Publish at least 4 ads',                              10, 1, true, 'Screenshot in Ads Manager'],
+    ['M02', 'weproject', 'Marketer', 'Submit report before 10:30am',                        5,  2, true, 'GM checks in WhatsApp group'],
+    ['M03', 'weproject', 'Marketer', 'Blast 1 audience pool',                               10, 3, true, 'Screenshot in CRM'],
+    ['M04', 'weproject', 'Marketer', 'FB / IG daily posting',                               5,  4, true, 'Post link'],
 
-    ['M05', 'weproject', 'LiveHost', 'Submit daily report before 10:30am',                  5,  1, true],
-    ['M06', 'weproject', 'LiveHost', 'Submit daily sales report before 5:50pm',             5,  2, true],
-    ['M07', 'weproject', 'LiveHost', 'Upload 2 TikTok content pieces per day',              5,  3, true],
-    ['M08', 'weproject', 'LiveHost', 'Share 2 customer testimonials in the WhatsApp group', 10, 4, true],
-    ['M09', 'weproject', 'LiveHost', 'Conduct live sessions at least 3 hours per day',      5,  5, true],
+    ['M05', 'weproject', 'LiveHost', 'Submit daily report before 10:30am',                  5,  1, true, 'GM checks in WhatsApp group'],
+    ['M06', 'weproject', 'LiveHost', 'Submit daily sales report before 5:50pm',             5,  2, true, 'GM checks in WhatsApp group'],
+    ['M07', 'weproject', 'LiveHost', 'Upload 2 TikTok content pieces per day',              5,  3, true, 'Post link'],
+    ['M08', 'weproject', 'LiveHost', 'Share 2 customer testimonials in the WhatsApp group', 10, 4, true, 'GM checks in WhatsApp group'],
+    ['M09', 'weproject', 'LiveHost', 'Conduct live sessions at least 3 hours per day',      5,  5, true, 'Screenshot in live dashboard'],
 
-    ['M10', 'weproject', 'Editor',   'Deliver at least 1 edited video (with Dropbox link)', 10, 1, true],
-    ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true],
-    ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true],
+    ['M10', 'weproject', 'Editor',   'Deliver at least 1 edited video (with Dropbox link)', 10, 1, true, 'GM checks with Izzi (Editor Lead)'],
+    ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true, 'GM checks with Izzi (Editor Lead)'],
+    ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true, 'GM checks with Izzi (Editor Lead)'],
 
     // Group-update COIN reward (+5 coins/day), per role — NOT EXP. Credited automatically
     // when the GM approves it in Mission_Log; does NOT count toward "All Daily Missions
     // Complete". exp = 0 so it never adds EXP. Editors report tasks (they have no sales).
-    ['M13', 'weproject', 'Marketer', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true],
-    ['M14', 'weproject', 'LiveHost', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true],
-    ['M15', 'weproject', 'Editor',   'Update task report in group by 6pm (+5 coins/day)',    0, 9, true]
+    ['M13', 'weproject', 'Marketer', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true, 'GM checks in WhatsApp group'],
+    ['M14', 'weproject', 'LiveHost', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true, 'GM checks in WhatsApp group'],
+    ['M15', 'weproject', 'Editor',   'Update task report in group by 6pm (+5 coins/day)',    0, 9, true, 'GM checks with Izzi (Editor Lead)']
   ];
 
   var sheet = makeSheet(ss, 'Missions', headers, rows);
@@ -598,7 +603,9 @@ function buildMissions(ss) {
 /* ------------------------------------------------------------------ */
 
 function buildMissionLog(ss) {
-  var headers = ['date', 'player_id', 'mission_id', 'status'];
+  // player / mission = readable name + mission text (the API fills these on submit);
+  // the id columns stay the source of truth. status dropdown is still column 4.
+  var headers = ['date', 'player_id', 'mission_id', 'status', 'player', 'mission'];
   var sheet = makeSheet(ss, 'Mission_Log', headers, []); // written by the API
   applyDropdown(sheet, 4, GROW_ROWS, MISSION_LOG_STATUSES);
 }
@@ -641,7 +648,8 @@ function buildBuffs(ss) {
 function buildLateness(ss) {
   // The API auto-deducts coins: −10 for the 1st–3rd late each month, −20 for
   // the 4th+ (tier resets on the 1st). Coins only — never EXP/Rank/Level.
-  var headers = ['date', 'player_id', 'note'];
+  // 'player' = readable name, auto-filled from player_id by onEdit (display only).
+  var headers = ['date', 'player_id', 'note', 'player'];
   makeSheet(ss, 'Lateness', headers, []); // GM adds a row each time someone is late
 }
 
@@ -695,11 +703,11 @@ function buildGuide(ss) {
   P('note', 'These reset every day. The reward is granted after GM approval. A 🪙 reward gives coins (not EXP).');
   roles.forEach(function (rl) {
     P('subhead', rl[1]);
-    P('mhead', 'MISSION', '', 'REWARD', 'WHEN');
+    P('head', 'MISSION', 'PROOF / UPDATE WHERE', 'REWARD', 'WHEN');
     var list = missions.filter(function (m) { return m.role === rl[0]; }).sort(function (a, b) { return num(a.sort) - num(b.sort); });
     if (!list.length) P('note', 'None configured yet.');
     list.forEach(function (m) {
-      P('mission', m.text_en, '', (num(m.exp) > 0 ? '+' + num(m.exp) + ' EXP' : '🪙 +5 coins'), dueOf(m.text_en));
+      P('mrow', m.text_en, m.proof || '', (num(m.exp) > 0 ? '+' + num(m.exp) + ' EXP' : '🪙 +5 coins'), dueOf(m.text_en));
     });
     P('blank');
   });
@@ -708,10 +716,10 @@ function buildGuide(ss) {
   P('note', 'Beyond daily missions — one-off wins your GM logs in EXP_Log. Editors: put "Winning" or "High CTR" in the item name so it counts on the Creative board.');
   roles.forEach(function (rl) {
     P('subhead', rl[1]);
-    P('head', 'WHAT', 'HOW TO GET IT', 'EXP', 'TYPE');
+    P('head', 'WHAT', 'HOW TO GET IT', 'PROOF / VERIFY', 'EXP');
     var list = actions.filter(function (a) { return a.role === rl[0] || a.role === 'Any'; });
     if (!list.length) P('note', 'None configured yet.');
-    list.forEach(function (a) { P('act', a.name_en, a.condition_en, '+' + num(a.exp), a.category); });
+    list.forEach(function (a) { P('act', a.name_en, a.condition_en, a.proof || '', '+' + num(a.exp)); });
     P('blank');
   });
 
@@ -782,17 +790,18 @@ function buildGuide(ss) {
     else if (t === 'tip')      { full.merge().setFontColor('#1F9D55').setFontWeight('bold'); }
     else if (t === 'head')     { sheet.getRange(row, 1, 1, COLS).setBackground('#1A2038').setFontColor('#E8ECFF').setFontWeight('bold').setFontSize(10); }
     else if (t === 'mhead')    { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 1, 1, COLS).setBackground('#1A2038').setFontColor('#E8ECFF').setFontWeight('bold').setFontSize(10); }
+    else if (t === 'mrow')     { sheet.getRange(row, 2).setFontColor('#4A5578').setFontSize(10); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#B8860B'); sheet.getRange(row, 4).setFontColor('#8A93B8').setFontSize(10); }
     else if (t === 'mission')  { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#B8860B'); sheet.getRange(row, 4).setFontColor('#8A93B8').setFontSize(10); }
-    else if (t === 'act')      { sheet.getRange(row, 2).setFontColor('#4A5578'); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#0E7C8C'); sheet.getRange(row, 4).setFontColor('#8A6D00').setFontSize(10); }
+    else if (t === 'act')      { sheet.getRange(row, 2).setFontColor('#4A5578').setFontSize(10); sheet.getRange(row, 3).setFontColor('#4A5578').setFontSize(10); sheet.getRange(row, 4).setFontWeight('bold').setFontColor('#0E7C8C'); }
     else if (t === 'shop')     { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#B8860B'); sheet.getRange(row, 4).setFontColor('#8A93B8').setFontSize(10); }
     else if (t === 'rank')     { sheet.getRange(row, 1).setFontWeight('bold'); sheet.getRange(row, 2, 1, 3).merge().setFontColor('#2B3350'); }
     else if (t === 'kv')       { sheet.getRange(row, 1).setFontWeight('bold').setFontColor('#8A5A00'); sheet.getRange(row, 2, 1, 3).merge().setFontColor('#2B3350'); }
   }
 
-  sheet.setColumnWidth(1, 250);
-  sheet.setColumnWidth(2, 440);
-  sheet.setColumnWidth(3, 150);
-  sheet.setColumnWidth(4, 170);
+  sheet.setColumnWidth(1, 280);
+  sheet.setColumnWidth(2, 340);
+  sheet.setColumnWidth(3, 170);
+  sheet.setColumnWidth(4, 150);
   try { sheet.setHiddenGridlines(true); } catch (e) {}
   sheet.setFrozenRows(1);
 }
@@ -807,6 +816,7 @@ function onOpen() {
       .createMenu('⚔ WEPROJECT LEGENDS')
       .addItem('🔄 Refresh Guide', 'refreshGuide')
       .addSeparator()
+      .addItem('⬆ Apply latest update (v1.3 — proof + names)', 'applyV13')
       .addItem('⚙ Apply rule changes (Missions / Actions / Shop)', 'applySalesChallengeConfig')
       .addItem('▶ Start a NEW month (reset gauntlet + ranks)', 'setSeasonToThisMonth')
       .addSeparator()
@@ -908,31 +918,51 @@ function enableSmartLogging() {
 }
 
 /**
- * Auto-fills category/exp/date when a preset task is chosen in EXP_Log.item.
- * This is a simple trigger — it runs automatically, no setup needed.
+ * Simple trigger — runs automatically, no setup needed. Two helpers:
+ *   • EXP_Log: choosing a preset task in "item" auto-fills category / exp / date.
+ *   • EXP_Log / Lateness / Achievements_Feed: typing a player_id auto-fills the
+ *     readable "player" name column next to it (display only).
  */
 function onEdit(e) {
   try {
     if (!e || !e.range) return;
-    var sh = e.range.getSheet();
-    if (sh.getName() !== 'EXP_Log') return;
-    if (e.range.getColumn() !== 5 || e.range.getRow() < 2) return;
-    var task = e.value;
-    if (!task) return;
-    var p = e.source.getSheetByName('Presets');
-    if (!p || p.getLastRow() < 2) return;
-    var rows = p.getRange(2, 1, p.getLastRow() - 1, 3).getValues();
-    for (var i = 0; i < rows.length; i++) {
-      if (String(rows[i][0]) === String(task)) {
-        var r = e.range.getRow();
-        sh.getRange(r, 4).setValue(rows[i][1]); // category
-        sh.getRange(r, 6).setValue(rows[i][2]); // exp
-        var dc = sh.getRange(r, 2);
-        if (dc.getValue() === '') dc.setValue(new Date()); // date if empty
-        break;
+    var sh = e.range.getSheet(), name = sh.getName(), col = e.range.getColumn(), row = e.range.getRow();
+    if (row < 2) return;
+
+    // EXP_Log item preset → category / exp / date
+    if (name === 'EXP_Log' && col === 5 && e.value) {
+      var p = e.source.getSheetByName('Presets');
+      if (p && p.getLastRow() >= 2) {
+        var rows = p.getRange(2, 1, p.getLastRow() - 1, 3).getValues();
+        for (var i = 0; i < rows.length; i++) {
+          if (String(rows[i][0]) === String(e.value)) {
+            sh.getRange(row, 4).setValue(rows[i][1]); // category
+            sh.getRange(row, 6).setValue(rows[i][2]); // exp
+            var dc = sh.getRange(row, 2);
+            if (dc.getValue() === '') dc.setValue(new Date()); // date if empty
+            break;
+          }
+        }
       }
     }
+
+    // player_id → readable "player" name (idCol, nameCol per sheet)
+    var NAMECOL = { 'EXP_Log': [3, 10], 'Lateness': [2, 4], 'Achievements_Feed': [2, 7] };
+    var nc = NAMECOL[name];
+    if (nc && col === nc[0]) {
+      var pid = String(e.value == null ? '' : e.value).trim();
+      sh.getRange(row, nc[1]).setValue(pid ? playerNameById_(e.source, pid) : '');
+    }
   } catch (err) {}
+}
+
+/** Look up a player's display name from their player_id (Players tab: id=col1, name=col3). */
+function playerNameById_(ss, pid) {
+  var p = ss.getSheetByName('Players');
+  if (!p) return '';
+  var v = p.getDataRange().getValues();
+  for (var i = 1; i < v.length; i++) { if (String(v[i][0]).trim() === pid) return v[i][2]; }
+  return '';
 }
 
 /**
@@ -1214,6 +1244,68 @@ function applyV12() {
     (madeTab ? 'Created the "Lateness" tab. ' : 'Lateness tab already exists. ') +
     'Add a row (date + player_id) each time someone is late — coins auto-deduct −10 (1st–3rd/month) or −20 (4th+), resets on the 1st. Coins only, balance may go negative. Commanders: do NOT log them.\n\n' +
     'Deploy → New version to push the API.');
+}
+
+/**
+ * v1.3: adds the "proof / update where" column (Missions + Actions → Guide) and
+ * readable NAME columns next to the ids, NON-DESTRUCTIVELY.
+ *   • Rebuilds Missions / Actions / Guide (config tabs — safe).
+ *   • Adds header columns to EXP_Log / Lateness / Achievements_Feed / Mission_Log /
+ *     Redemptions WITHOUT clearing them, then backfills names for existing rows.
+ * Run THIS once after pasting the new code, then Deploy → New version (so the API
+ * starts writing player/mission names on new submissions & redeems).
+ */
+function applyV13() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildMissions(ss);   // adds the 'proof' column (config tab — safe to rebuild)
+  buildActions(ss);    // adds the 'proof' column
+  buildGuide(ss);      // shows proof in the Guide
+
+  ensureHeader_(ss, 'EXP_Log', 10, 'player');
+  ensureHeader_(ss, 'Lateness', 4, 'player');
+  ensureHeader_(ss, 'Achievements_Feed', 7, 'player');
+  ensureHeader_(ss, 'Mission_Log', 5, 'player');
+  ensureHeader_(ss, 'Mission_Log', 6, 'mission');
+  ensureHeader_(ss, 'Redemptions', 7, 'player');
+  backfillNames_(ss);
+
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv', 'shop:weproject', 'shop:wellous']); } catch (e) {}
+  uiAlert_('v1.3 applied',
+    'Added a "proof / update where" column to Missions & Actions (now shown in the Guide), and readable "player" / "mission" name columns next to the ids in EXP_Log, Lateness, Achievements_Feed, Mission_Log and Redemptions. Existing rows were backfilled.\n\n' +
+    'The id columns stay the source of truth. Deploy → New version so the API writes names on NEW submissions & redeems.');
+}
+
+/** Set a header cell only if it isn't already that label (non-destructive — never clears data). */
+function ensureHeader_(ss, tab, colIndex, label) {
+  var sh = ss.getSheetByName(tab);
+  if (!sh) return;
+  var cur = String(sh.getRange(1, colIndex).getValue()).trim().toLowerCase();
+  if (cur !== label.toLowerCase()) {
+    sh.getRange(1, colIndex).setValue(label).setFontWeight('bold').setFontColor('#F5C542').setBackground('#0A0D1C');
+  }
+}
+
+/** Fill the readable name columns for EXISTING rows (id → name / mission text). */
+function backfillNames_(ss) {
+  var pName = {}, mText = {};
+  getRows('Players').forEach(function (p) { pName[p.player_id] = p.name; });
+  getRows('Missions').forEach(function (m) { mText[m.mission_id] = m.text_en; });
+  fillNameCol_(ss, 'EXP_Log', 3, 10, pName);
+  fillNameCol_(ss, 'Lateness', 2, 4, pName);
+  fillNameCol_(ss, 'Achievements_Feed', 2, 7, pName);
+  fillNameCol_(ss, 'Redemptions', 2, 7, pName);
+  fillNameCol_(ss, 'Mission_Log', 2, 5, pName);
+  fillNameCol_(ss, 'Mission_Log', 3, 6, mText);
+}
+
+function fillNameCol_(ss, tab, idCol, nameCol, map) {
+  var sh = ss.getSheetByName(tab);
+  if (!sh) return;
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var ids = sh.getRange(2, idCol, last - 1, 1).getValues();
+  var out = ids.map(function (r) { var k = String(r[0]).trim(); return [k && map[k] ? map[k] : '']; });
+  sh.getRange(2, nameCol, out.length, 1).setValues(out);
 }
 
 /**
