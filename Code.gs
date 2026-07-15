@@ -533,7 +533,7 @@ function buildActions(ss) {
     ['A08', 'weproject', 'LiveHost', 'First Blood',             'First approved order of the day',                              10, '', 'achievement', true],
 
     // Editor
-    ['A09', 'weproject', 'Editor',   'Winning Creative Production', 'A video you produced gets >5 purchases with ROAS > 3',      50, '', 'achievement', true],
+    ['A09', 'weproject', 'Editor',   'Winning Creative Production', 'A video you produced gets >5 purchases with ROAS > 3',      80, '', 'achievement', true],
     ['A10', 'weproject', 'Editor',   'All Video Purchase',      '30 purchases in a week across your videos',                     30, '', 'action', true],
 
     // Everyone
@@ -579,10 +579,12 @@ function buildMissions(ss) {
     ['M11', 'weproject', 'Editor',   'Submit 1 script for Shanghai Content',                5,  2, true],
     ['M12', 'weproject', 'Editor',   'Shoot 1 content per day',                             5,  3, true],
 
-    // Everyone (role = Any) — COIN reward (+5 coins/day), not EXP. Credited automatically
-    // when the GM approves this mission in Mission_Log; does NOT count toward "All Daily
-    // Missions Complete". exp = 0 so it never adds EXP.
-    ['M13', 'weproject', 'Any',      'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true]
+    // Group-update COIN reward (+5 coins/day), per role — NOT EXP. Credited automatically
+    // when the GM approves it in Mission_Log; does NOT count toward "All Daily Missions
+    // Complete". exp = 0 so it never adds EXP. Editors report tasks (they have no sales).
+    ['M13', 'weproject', 'Marketer', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true],
+    ['M14', 'weproject', 'LiveHost', 'Update Sales in Group by 6pm (+5 coins/day)',          0, 9, true],
+    ['M15', 'weproject', 'Editor',   'Update task report in group by 6pm (+5 coins/day)',    0, 9, true]
   ];
 
   var sheet = makeSheet(ss, 'Missions', headers, rows);

@@ -56,7 +56,7 @@ var CACHE_SECONDS = 60;
 var CLASS_FAMILY_BY_ROLE = { Marketer: 'Carry', LiveHost: 'Fighter', Editor: 'Support', Salesperson: 'Slayer' };
 
 // v1.2 coin-only rewards/penalties (do NOT affect EXP / Rank / Level)
-var GROUP_SALES_MISSION_ID = 'M13';  // "Update Sales in Group by 6pm" → +5 coins per approved day
+var GROUP_SALES_MISSION_IDS = ['M13', 'M14', 'M15'];  // per-role "update group by 6pm" (Marketer/LiveHost sales, Editor task report) → +5 coins per approved day
 var GROUP_SALES_COINS = 5;
 var LATE_PENALTY_FIRST = 10;         // 1st–3rd late in a month
 var LATE_PENALTY_AFTER = 20;         // 4th+ late in the same month
@@ -678,11 +678,11 @@ function coinAdjustments(playerId) {
   return groupSalesCoins(playerId) + latenessCoins(playerId);
 }
 
-/** +5 coins for each approved "Update Sales in Group" (M13) mission-log row. */
+/** +5 coins for each approved group-update mission (M13/M14/M15) log row. */
 function groupSalesCoins(playerId) {
   var n = 0;
   getRows('Mission_Log').forEach(function (l) {
-    if (l.player_id === playerId && String(l.mission_id) === GROUP_SALES_MISSION_ID && String(l.status) === 'approved') n++;
+    if (l.player_id === playerId && GROUP_SALES_MISSION_IDS.indexOf(String(l.mission_id)) !== -1 && String(l.status) === 'approved') n++;
   });
   return n * GROUP_SALES_COINS;
 }
