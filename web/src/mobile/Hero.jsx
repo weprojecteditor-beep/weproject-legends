@@ -190,6 +190,30 @@ export default function Hero({ player, onMission }) {
         <div style={{ fontSize: 9, color: C.dimmer, marginTop: 9, textAlign: "center" }}>🪙 Coins are added after GM approval — every point you earn is 1 coin</div>
       </Frame>
 
+      {/* ── Coin History ── */}
+      <Frame pad={14}>
+        <Eyebrow right={`🪙 ${fmt(player.gold)} NOW`}>COIN HISTORY</Eyebrow>
+        {(!player.coinHistory || player.coinHistory.length === 0) ? (
+          <div style={{ fontSize: 12, textAlign: "center", color: C.dim, padding: "6px 0" }}>No coins yet — complete a mission to get started.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {player.coinHistory.map((h, i) => {
+              const up = h.coins >= 0;
+              return (
+                <div key={i} className="flex items-center justify-between" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 11px", clipPath: CLIP_SM, background: C.panelSoft, border: `1px solid ${C.line}` }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{h.label}</div>
+                    <div style={{ fontSize: 9, color: C.dimmer, marginTop: 1 }}>{h.date}</div>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 900, whiteSpace: "nowrap", fontFamily: "'Chakra Petch',sans-serif", color: up ? C.gold : C.enemy }}>{up ? "+" : "−"}🪙 {fmt(Math.abs(h.coins))}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ fontSize: 9, color: C.dimmer, marginTop: 8, textAlign: "center" }}>Base coins shown · Elite/Legend skin adds +10%/+20% on top of your total</div>
+      </Frame>
+
       {/* ── Badges ── */}
       <Frame pad={14}>
         <Eyebrow>BADGES</Eyebrow>

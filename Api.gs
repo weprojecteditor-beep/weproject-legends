@@ -257,28 +257,110 @@ function sumTeamRevenueInRange(players, expApproved, team, startStr, endStr) {
 /* Rankings + feed                                                     */
 /* ================================================================== */
 
+/** Required daily missions per role = active, exp>0 (coins-only M13/14/15 excluded),
+ *  plus any exp>0 role='Any' missions folded into every role. { role: {mid:true} }. */
+function requiredMissionsByRole() {
+  var byRole = {}, anyIds = {};
+  getRows('Missions').forEach(function (m) {
+    if (!bool(m.active) || num(m.exp) <= 0) return;
+    if (m.role === 'Any') { anyIds[String(m.mission_id)] = true; return; }
+    (byRole[m.role] = byRole[m.role] || {})[String(m.mission_id)] = true;
+  });
+  Object.keys(byRole).forEach(function (role) {
+    Object.keys(anyIds).forEach(function (id) { byRole[role][id] = true; });
+  });
+  return byRole;
+}
+
+/** The "All Daily Missions Complete" bonus EXP, read from the Actions tab (default 30). */
+function allCompleteBonus() {
+  var b = 30;
+  getRows('Actions').forEach(function (a) {
+    if (bool(a.active) && String(a.name_en).toLowerCase().indexOf('all daily missions complete') !== -1) {
+      var e = num(a.exp); if (e) b = e;
+    }
+  });
+  return b;
+}
+
 /**
- * Approved daily missions grant their configured EXP (Missions.exp) — so approving
- * a mission in Mission_Log actually pays the player, with no separate EXP_Log entry.
- * Coins-only missions (M13/M14/M15, exp 0) add nothing here; they pay via
- * groupSalesCoins instead, so there is no double count.
- * Returns { playerId: { all, season, today } } (EXP totals).
+ * Approved daily missions grant their configured EXP (Missions.exp), and finishing
+ * EVERY required mission for your role on a day auto-grants the "All Daily Missions
+ * Complete" bonus — so approving in Mission_Log pays the player, no EXP_Log entry
+ * needed. Coins-only missions (M13/M14/M15, exp 0) add nothing here; they pay via
+ * groupSalesCoins. Returns { playerId: { all, season, today } } (EXP totals).
  */
 function approvedMissionExp(seasonStart, seasonEnd, today) {
-  var mexp = {};
+  var mexp = {}, roleOf = {};
   getRows('Missions').forEach(function (m) { mexp[String(m.mission_id)] = num(m.exp); });
-  var out = {};
+  getRows('Players').forEach(function (p) { roleOf[p.player_id] = p.role; });
+  var req = requiredMissionsByRole(), bonus = allCompleteBonus();
+
+  var out = {}, doneByDay = {}; // doneByDay[pid][day] = { mid: true }
   getRows('Mission_Log').forEach(function (l) {
     if (String(l.status) !== 'approved') return;
-    var e = mexp[String(l.mission_id)] || 0;
-    if (!e) return;
-    var d = dateStr(l.date), pid = l.player_id;
+    var mid = String(l.mission_id), d = dateStr(l.date), pid = l.player_id, e = mexp[mid] || 0;
     var o = out[pid] || (out[pid] = { all: 0, season: 0, today: 0 });
-    o.all += e;
-    if (d >= seasonStart && d <= seasonEnd) o.season += e;
-    if (d === today) o.today += e;
+    if (e) { o.all += e; if (d >= seasonStart && d <= seasonEnd) o.season += e; if (d === today) o.today += e; }
+    ((doneByDay[pid] = doneByDay[pid] || {})[d] = (doneByDay[pid][d] || {}))[mid] = true;
+  });
+
+  // + all-daily-complete bonus for each day a player has every required mission approved
+  Object.keys(doneByDay).forEach(function (pid) {
+    var reqIds = Object.keys(req[roleOf[pid]] || {});
+    if (!reqIds.length) return;
+    Object.keys(doneByDay[pid]).forEach(function (d) {
+      var done = doneByDay[pid][d];
+      if (reqIds.every(function (id) { return done[id]; })) {
+        var o = out[pid] || (out[pid] = { all: 0, season: 0, today: 0 });
+        o.all += bonus; if (d >= seasonStart && d <= seasonEnd) o.season += bonus; if (d === today) o.today += bonus;
+      }
+    });
   });
   return out;
+}
+
+/**
+ * Per-player coin history for the dashboard — every coin-affecting event, newest
+ * first. Amounts are BASE coins (the Elite/Legend skin % bonus applies on the
+ * total, not per row). Returns [{ date, label, coins, kind }].
+ */
+function buildCoinHistory(id) {
+  var mexp = {}, mtext = {};
+  getRows('Missions').forEach(function (m) { mexp[String(m.mission_id)] = num(m.exp); mtext[String(m.mission_id)] = m.text_en; });
+  var roleOf = {};
+  getRows('Players').forEach(function (p) { roleOf[p.player_id] = p.role; });
+  var req = requiredMissionsByRole(), bonus = allCompleteBonus();
+
+  var hist = [], doneByDay = {};
+  getRows('Mission_Log').forEach(function (l) {
+    if (l.player_id !== id || String(l.status) !== 'approved') return;
+    var mid = String(l.mission_id), d = dateStr(l.date), e = mexp[mid] || 0;
+    if (GROUP_SALES_MISSION_IDS.indexOf(mid) !== -1) hist.push({ date: d, label: 'Updated in group by 6pm', coins: GROUP_SALES_COINS, kind: 'coin' });
+    else if (e) hist.push({ date: d, label: mtext[mid] || mid, coins: e, kind: 'mission' });
+    (doneByDay[d] = doneByDay[d] || {})[mid] = true;
+  });
+  var reqIds = Object.keys(req[roleOf[id]] || {});
+  if (reqIds.length) Object.keys(doneByDay).forEach(function (d) {
+    if (reqIds.every(function (x) { return doneByDay[d][x]; })) hist.push({ date: d, label: 'All daily missions complete', coins: bonus, kind: 'bonus' });
+  });
+  getRows('EXP_Log').forEach(function (r) {
+    if (r.player_id !== id || !isApproved(r)) return;
+    var e = num(r.exp); if (!e) return;
+    hist.push({ date: dateStr(r.date), label: String(r.item || r.category || 'Adjustment'), coins: e, kind: String(r.category || 'exp').toLowerCase() });
+  });
+  getRows('Lateness').filter(function (r) { return r.player_id === id && dateStr(r.date); })
+    .sort(function (a, b) { return new Date(a.date) - new Date(b.date); })
+    .reduce(function (cnt, r) {
+      var d = dateStr(r.date), mk = d.slice(0, 7), n = cnt[mk] = (cnt[mk] || 0) + 1;
+      hist.push({ date: d, label: 'Late arrival (#' + n + ' this month)', coins: -(n <= 3 ? LATE_PENALTY_FIRST : LATE_PENALTY_AFTER), kind: 'penalty' });
+      return cnt;
+    }, {});
+  getRows('Redemptions').forEach(function (rd) {
+    if (rd.player_id !== id || String(rd.status) === 'rejected') return;
+    hist.push({ date: dateStr(rd.timestamp), label: 'Redeemed: ' + rd.item_name, coins: -num(rd.gold_cost), kind: 'spend' });
+  });
+  return hist.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); }).slice(0, 40);
 }
 
 /** Players ranked by their season revenue (= damage dealt to the boss). */
@@ -436,7 +518,8 @@ function getPlayer(id, pin) {
     missionsToday: getMissionsToday(p, today),
     redemptionHistory: redemptionHistory,
     paceEligible: computePaceEligibility(p, mine, cfg, players),
-    recentLog: recentLog
+    recentLog: recentLog,
+    coinHistory: buildCoinHistory(id)
   };
   return out;
 }
