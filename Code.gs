@@ -649,119 +649,178 @@ function buildLateness(ss) {
 /* Guide tab: HR/GM entry reference                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Rebuilds the Guide tab — one clean, plain-English reference for players,
+ * team leads and the boss. It is GENERATED FROM the live data (Missions /
+ * Actions / Shop / Config), so it always matches them. To change a mission,
+ * reward or EXP value: edit those tabs, then run refreshGuide (menu button).
+ */
 function buildGuide(ss) {
-  var name = 'Guide';
-  var sheet = ss.getSheetByName(name);
-  if (sheet) { sheet.clear(); } else { sheet = ss.insertSheet(name); }
+  var sheet = ss.getSheetByName('Guide');
+  if (sheet) { sheet.clear(); } else { sheet = ss.insertSheet('Guide'); }
+  try { sheet.getRange(1, 1, sheet.getMaxRows(), 4).breakApart(); } catch (e) {} // clear old merges
 
-  var blank = ['', '', '', '', ''];
-  var content = [
-    { r: ['WEPROJECT LEGENDS — GM / HR DAILY ENTRY GUIDE (Monthly Gauntlet)', '', '', '', ''], t: 'title' },
-    { r: blank, t: 'note' },
+  var COLS = 4;
+  var missions = getRows('Missions').filter(function (m) { return bool(m.active) && m.team === 'weproject'; });
+  var actions  = getRows('Actions').filter(function (a) { return bool(a.active) && a.team === 'weproject'; });
+  var shop     = getRows('Shop').filter(function (s) { return bool(s.active) && s.team === 'weproject'; });
+  var cfg = getConfig();
+  var roles = [['Marketer', 'MARKETER · Ads / Media Buyer'], ['LiveHost', 'LIVE HOST / CS'], ['Editor', 'EDITOR · Content']];
 
-    { r: ['WHAT EACH EXP_LOG COLUMN MEANS', '', '', '', ''], t: 'section' },
-    { r: ['column', 'what to put', '', '', ''], t: 'head' },
-    { r: ['date', 'The day it happened. Used for the "today" feed.', '', '', ''], t: 'note' },
-    { r: ['player_id', 'P001–P016. See the Players tab for who is who and their team.', '', '', ''], t: 'note' },
-    { r: ['category', 'Pick from the dropdown (7 options). See Actions/Missions tabs for the exact EXP each item is worth.', '', '', ''], t: 'note' },
-    { r: ['item', 'Free-text description. For Editors, include "Winning" or "High CTR" so it counts on the Creative board.', '', '', ''], t: 'note' },
-    { r: ['exp', 'Points the player earns (this is also their Gold). Can be NEGATIVE for refunds / corrections.', '', '', ''], t: 'note' },
-    { r: ['amount_rm', 'ONLY for real revenue (a sale). This is the damage that hits the citadel AND fills the personal Damage ranking — same number, two views. Negative = refund, rolls back both.', '', '', ''], t: 'note' },
-    { r: ['approved', 'Tick the checkbox to make the row count. Un-ticked rows are ignored by the app.', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  function grp(n) { return Math.round(num(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function dueOf(text) { var m = String(text).match(/\b(?:before|by)\s+[0-9][0-9:.]*\s*(?:am|pm)/i); return m ? m[0] : 'Anytime today'; }
 
-    { r: ['MONTHLY GAUNTLET — HOW IT WORKS', '', '', '', ''], t: 'section' },
-    { r: ['• Each month is a 3-stage gauntlet: Tower I → Tower II → Crystal (the final boss). Total HP = boss_target (default 1,000,000), split 30% / 40% / 30% — Tower II is the biggest wall, so breaking it is the big moment.', '', '', '', ''], t: 'note' },
-    { r: ['• Every RM1 of approved amount_rm = 1 damage. Damage breaks Tower I first, then Tower II, then shatters the Crystal.', '', '', '', ''], t: 'note' },
-    { r: ['• Clear all 3 stages = the team beats the month. (Rename the citadel via boss_name; size each stage via base_tower1_hp / base_tower2_hp / base_crystal_hp, else it auto-splits boss_target.)', '', '', '', ''], t: 'note' },
-    { r: ['• There is no auto rollover: run setSeasonToThisMonth to start a fresh gauntlet + reset everyone\'s Rank.', '', '', '', ''], t: 'note' },
-    { r: ['• Personal Damage ranking = each player\'s approved amount_rm this month = their contribution to the citadel.', '', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  var content = [];
+  function P(t, a, b, c, d) { content.push({ t: t, r: [a || '', b || '', c || '', d || ''] }); }
 
-    { r: ['HERO CLASS (locked by role, cosmetic choice within it)', '', '', '', ''], t: 'section' },
-    { r: ['role', 'class family', 'heroes to choose from', '', ''], t: 'head' },
-    { r: ['Marketer', 'Carry',   'Marksman / Mage / Assassin', '', ''], t: 'note' },
-    { r: ['LiveHost', 'Fighter', 'Fighter / Tank / Berserker', '', ''], t: 'note' },
-    { r: ['Editor',   'Support', 'Support / Bard / Summoner', '', ''], t: 'note' },
-    { r: ['All heroes within a role share the same EXP numbers (see Actions tab) — only appearance differs, so matches stay balanced.', '', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('title', 'WEPROJECT LEGENDS — TEAM GUIDE');
+  P('subtitle', 'For players, team leads & boss. This page is built from the Missions / Actions / Shop tabs. To change anything, edit those tabs, then use the menu:  ⚔ WEPROJECT LEGENDS  ▸  Refresh Guide.');
+  P('blank');
 
-    { r: ['CATEGORY REFERENCE', '', '', '', ''], t: 'section' },
-    { r: ['category', 'use it for', 'counts to daily 200 cap? (reference only)', 'becomes a badge?', ''], t: 'head' },
-    { r: ['mission', 'Daily routine tasks (Missions tab)', 'YES', 'no', ''], t: 'note' },
-    { r: ['action', 'One-off wins / good behaviour (Actions tab)', 'YES', 'no', ''], t: 'note' },
-    { r: ['assist', 'Helping a teammate', 'YES', 'no', ''], t: 'note' },
-    { r: ['achievement', 'Named feats (First Blood, Winning Creative…)', 'No (exempt)', 'YES', ''], t: 'note' },
-    { r: ['milestone', 'Revenue / sales milestones', 'No (exempt)', 'YES', ''], t: 'note' },
-    { r: ['mvp', 'Daily / weekly MVP bonus', 'No (exempt)', 'YES', ''], t: 'note' },
-    { r: ['adjust', 'Corrections & refunds (negative exp / amount_rm)', '—', 'no', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('section', '🏰  THE GOAL — BEAT THE MONTHLY BOSS');
+  P('note', '• The whole team shares ONE boss each month: the ' + (cfg.boss_name || 'Crystal Citadel') + '. Break Tower I → Tower II → shatter the Crystal before month-end.');
+  P('note', '• Every RM 1 of real sales = 1 damage on the boss. Total boss HP this month = RM ' + grp(cfg.boss_target || 1000000) + '.');
+  P('note', '• Your sales also rank you personally on the Damage board. Editors help by producing winning content.');
+  P('blank');
 
-    { r: ['GOLD & SKINS', '', '', '', ''], t: 'section' },
-    { r: ['• Gold earned = total approved EXP × the player\'s skin multiplier. Spending Gold in the shop never lowers Rank or Level.', '', '', '', ''], t: 'note' },
-    { r: ['• Skin multiplier by Level: Lv1–9 ×1.0, Lv10+ ×1.1 (Elite), Lv20+ ×1.2 (Legend) — higher level earns Gold faster.', '', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('section', '🎮  HOW YOU PLAY (every player)');
+  P('kv', '1 · Log in', 'Open the app, tap your name, enter your 4-digit PIN. First time: pick your hero look (class + male / female).');
+  P('kv', '2 · Daily missions', 'Do the tasks in your list below. Each shows a due time.');
+  P('kv', '3 · Submit', 'Tap a mission in the app → it turns ⏳ Pending → your lead / GM approves → you get the EXP or coins.');
+  P('kv', '4 · Earn more', 'Hit the EXP bonuses & achievements below. Big personal sales days earn bonus coins.');
+  P('kv', '5 · Spend', 'Trade your coins for rewards in the app’s Shop.');
+  P('blank');
 
-    { r: ['DAILY SALES BONUS (Marketer & LiveHost/CS only)', '', '', '', ''], t: 'section' },
-    { r: ['when a person\'s personal sales for the day reach…', 'they earn', '', '', ''], t: 'head' },
-    { r: ['RM 3,000 in a day', '50 coins', '', '', ''], t: 'note' },
-    { r: ['RM 5,000 in a day', '80 coins', '', '', ''], t: 'note' },
-    { r: ['RM 10,000 in a day', '200 coins', '', '', ''], t: 'note' },
-    { r: ['Highest tier only — a RM10k day earns 200 (not 50+80+200). Log ONE "milestone" row in EXP_Log for the top tier reached.', '', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('section', '✅  DAILY MISSIONS — WHAT TO DO EACH DAY');
+  P('note', 'These reset every day. The reward is granted after GM approval. A 🪙 reward gives coins (not EXP).');
+  roles.forEach(function (rl) {
+    P('subhead', rl[1]);
+    P('mhead', 'MISSION', '', 'REWARD', 'WHEN');
+    var list = missions.filter(function (m) { return m.role === rl[0]; }).sort(function (a, b) { return num(a.sort) - num(b.sort); });
+    if (!list.length) P('note', 'None configured yet.');
+    list.forEach(function (m) {
+      P('mission', m.text_en, '', (num(m.exp) > 0 ? '+' + num(m.exp) + ' EXP' : '🪙 +5 coins'), dueOf(m.text_en));
+    });
+    P('blank');
+  });
 
-    { r: ['COIN-ONLY (never touch EXP / Rank / Level)', '', '', '', ''], t: 'section' },
-    { r: ['• "Update Sales in Group by 6pm" (Marketer/LiveHost) / "Update task report in group by 6pm" (Editor) = +5 COINS/day. Auto-credited when you APPROVE that mission in Mission_Log. Does NOT count toward "All Daily Missions Complete +30".', '', '', '', ''], t: 'note' },
-    { r: ['• Lateness: in the Lateness tab, add a row (date + player_id) each time someone is late. Coins auto-deduct −10 for the 1st–3rd late that month, −20 for the 4th+. Tier resets on the 1st. Balance may go negative. Commanders are exempt (do not log them).', '', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('section', '⭐  HOW TO EARN EXTRA EXP & ACHIEVEMENTS');
+  P('note', 'Beyond daily missions — one-off wins your GM logs in EXP_Log. Editors: put "Winning" or "High CTR" in the item name so it counts on the Creative board.');
+  roles.forEach(function (rl) {
+    P('subhead', rl[1]);
+    P('head', 'WHAT', 'HOW TO GET IT', 'EXP', 'TYPE');
+    var list = actions.filter(function (a) { return a.role === rl[0] || a.role === 'Any'; });
+    if (!list.length) P('note', 'None configured yet.');
+    list.forEach(function (a) { P('act', a.name_en, a.condition_en, '+' + num(a.exp), a.category); });
+    P('blank');
+  });
 
-    { r: ['TV FEED TAGS (post standout moments to Achievements_Feed)', '', '', '', ''], t: 'section' },
-    { r: ['tag', 'post it when…', '', '', ''], t: 'head' },
-    { r: ['FIRST BLOOD', 'The first sale / order of the day (whole team) lands', '', '', ''], t: 'note' },
-    { r: ['DOUBLE KILL', '10 purchases in a day', '', '', ''], t: 'note' },
-    { r: ['WINNING CREATIVE', 'An ad hits >5 purchases with ROAS > 3', '', '', ''], t: 'note' },
-    { r: ['SAVAGE', 'An exceptional feat — e.g. a big single-day sales record', '', '', ''], t: 'note' },
-    { r: ['MANIAC', 'A strong streak just below Savage', '', '', ''], t: 'note' },
-    { r: ['MVP', 'Best performer of the day (HR pick)', '', '', ''], t: 'note' },
-    { r: ['ASSIST', 'Helped a teammate (e.g. an Editor cut becomes a Winning Creative)', '', '', ''], t: 'note' },
-    { r: ['BOSS DAMAGE', 'A big RM chunk breaks a Tower or the Crystal', '', '', ''], t: 'note' },
-    { r: ['MILESTONE', 'A revenue milestone is hit', '', '', ''], t: 'note' },
-    { r: blank, t: 'note' },
+  P('section', '💰  DAILY SALES BONUS (coins) — Marketer & Live Host / CS');
+  P('note', 'On top of EXP. Highest tier only — a RM 10k day earns 200 coins (not 50+80+200). GM logs one milestone row.');
+  P('mhead', 'YOUR PERSONAL SALES IN ONE DAY', '', 'COINS', '');
+  P('mission', 'RM 3,000 in a day', '', '🪙 +50', '');
+  P('mission', 'RM 5,000 in a day', '', '🪙 +80', '');
+  P('mission', 'RM 10,000 in a day', '', '🪙 +200', '');
+  P('blank');
 
-    { r: ['GOLDEN RULES', '', '', '', ''], t: 'section' },
-    { r: ['• Gold = total approved EXP − shop spending. Spending Gold never lowers a Rank.', '', '', '', ''], t: 'note' },
-    { r: ['• Rank uses SEASON (this calendar month) EXP. Level uses ALL-TIME EXP.', '', '', '', ''], t: 'note' },
-    { r: ['• Daily cap (200) is a reference value only — the app never rejects a row; use judgment when approving.', '', '', '', ''], t: 'note' },
-    { r: ['• To refund: add an "adjust" row with NEGATIVE exp (and negative amount_rm if it was revenue) — this is the ONLY way to refund.', '', '', '', ''], t: 'note' },
-    { r: ['• Nothing counts until you tick the "approved" checkbox.', '', '', '', ''], t: 'note' },
-    { r: ['• Pace badges / first-to-Lv15-season-EXP bounty are only FLAGGED by the app (from join_date / season EXP) — you still hand them out manually.', '', '', '', ''], t: 'note' }
-  ];
+  P('section', '🪙  OTHER COINS');
+  P('kv', 'Update group by 6pm', '+5 coins/day — Marketer & Live Host update sales; Editors update their task report. Credited when the GM approves it in Mission_Log.');
+  P('kv', 'Coming in late', '−10 coins for the 1st–3rd late in a month, −20 after. GM logs it in the Lateness tab. Resets on the 1st. Coins can go negative.');
+  P('blank');
 
-  var values = content.map(function (x) { return x.r; });
-  sheet.getRange(1, 1, values.length, 5).setValues(values);
+  P('section', '🛒  REWARDS — SPEND YOUR COINS');
+  P('mhead', 'REWARD', '', 'COST', 'STOCK');
+  shop.sort(function (a, b) { return num(a.price) - num(b.price); }).forEach(function (s) {
+    P('shop', (s.icon ? s.icon + '  ' : '') + s.name, '', grp(s.price) + ' 🪙', (num(s.stock) < 0 ? 'Unlimited' : num(s.stock) + ' left'));
+  });
+  P('blank');
+
+  P('section', '📈  LEVELS, RANKS & GOLD');
+  P('note', '• EXP makes you LEVEL up (all-time). A higher level = a better skin that earns coins faster: Lv10 Elite +10%, Lv20 Legend +20%.');
+  P('note', '• RANK is your standing THIS month (season EXP) and resets every month. Spending coins never lowers your Rank or Level.');
+  P('subhead', 'RANK LADDER — reach this SEASON EXP');
+  P('head', 'RANK', 'SEASON EXP NEEDED', '', '');
+  [['🥉 Warrior', 'rank_warrior'], ['🥈 Elite', 'rank_elite'], ['🥇 Master', 'rank_master'], ['💠 Epic', 'rank_epic'], ['👑 Legend', 'rank_legend'], ['🔥 Mythic', 'rank_mythic']].forEach(function (t) {
+    P('rank', t[0], grp(cfg[t[1]] || 0) + ' EXP');
+  });
+  P('blank');
+
+  P('section', '⏰  DUE TIMES — QUICK LIST');
+  var dues = [];
+  missions.forEach(function (m) { var d = dueOf(m.text_en); if (d !== 'Anytime today') dues.push([d, m.role, m.text_en]); });
+  P('head', 'BY', 'WHO / WHAT', '', '');
+  if (!dues.length) P('note', 'No fixed deadlines — submit anytime during the day.');
+  dues.forEach(function (x) { P('rank', x[0], x[1] + ' — ' + x[2]); });
+  P('blank');
+
+  P('section', '🛠  FOR THE GM (about 5 minutes a day)');
+  P('kv', 'Approve', 'In Mission_Log & Redemptions, set anything "pending" → approved (or rejected).');
+  P('kv', 'Log sales & wins', 'In EXP_Log: pick person + category + item, then tick approved. For a real sale, put the RM in amount_rm.');
+  P('kv', 'Late / bonus', 'Lateness tab for late arrivals. For a RM 3k/5k/10k sales day, log one milestone row.');
+  P('tip', '✔ The player app, boss bar and leaderboards all refresh by themselves within about 1 minute.');
+  P('blank');
+
+  P('section', '👑  FOR TEAM LEAD / BOSS');
+  P('note', '• Log in with your PIN to see everyone’s live stats, the boss progress and the feed (Overview + Guide).');
+  P('note', '• To change a mission, reward or EXP: edit the Missions / Actions / Shop tab, then run  ⚔ WEPROJECT LEGENDS ▸ Refresh Guide.  The player app reflects your edits within a minute automatically.');
+  P('blank');
+
+  P('subtitle', 'Last refreshed: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
+
+  // ---- write values, then style row-by-row ----
+  var grid = content.map(function (x) { return x.r; });
+  sheet.getRange(1, 1, grid.length, COLS).setValues(grid);
+  sheet.getRange(1, 1, grid.length, COLS).setVerticalAlignment('top').setWrap(true).setFontSize(11);
 
   for (var i = 0; i < content.length; i++) {
-    var row = i + 1;
-    var range = sheet.getRange(row, 1, 1, 5);
-    if (content[i].t === 'title') {
-      range.merge().setFontSize(14).setFontWeight('bold')
-        .setFontColor('#F5C542').setBackground('#0A0D1C');
-      sheet.setRowHeight(row, 34);
-    } else if (content[i].t === 'section') {
-      range.merge().setFontWeight('bold')
-        .setFontColor('#F5C542').setBackground('#12172B');
-    } else if (content[i].t === 'head') {
-      sheet.getRange(row, 1, 1, 5).setFontWeight('bold').setBackground('#1A2038').setFontColor('#E8ECFF');
-    }
+    var row = i + 1, t = content[i].t, full = sheet.getRange(row, 1, 1, COLS);
+    if (t === 'title')         { full.merge().setBackground('#0A0D1C').setFontColor('#F5C542').setFontWeight('bold').setFontSize(16); sheet.setRowHeight(row, 44); }
+    else if (t === 'subtitle') { full.merge().setFontColor('#7C86B0').setFontStyle('italic').setFontSize(10); }
+    else if (t === 'section')  { full.merge().setBackground('#12172B').setFontColor('#F5C542').setFontWeight('bold').setFontSize(12); sheet.setRowHeight(row, 30); }
+    else if (t === 'subhead')  { full.merge().setBackground('#0E1630').setFontColor('#3EE0F0').setFontWeight('bold'); }
+    else if (t === 'note')     { full.merge().setFontColor('#2B3350'); }
+    else if (t === 'tip')      { full.merge().setFontColor('#1F9D55').setFontWeight('bold'); }
+    else if (t === 'head')     { sheet.getRange(row, 1, 1, COLS).setBackground('#1A2038').setFontColor('#E8ECFF').setFontWeight('bold').setFontSize(10); }
+    else if (t === 'mhead')    { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 1, 1, COLS).setBackground('#1A2038').setFontColor('#E8ECFF').setFontWeight('bold').setFontSize(10); }
+    else if (t === 'mission')  { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#B8860B'); sheet.getRange(row, 4).setFontColor('#8A93B8').setFontSize(10); }
+    else if (t === 'act')      { sheet.getRange(row, 2).setFontColor('#4A5578'); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#0E7C8C'); sheet.getRange(row, 4).setFontColor('#8A6D00').setFontSize(10); }
+    else if (t === 'shop')     { sheet.getRange(row, 1, 1, 2).merge(); sheet.getRange(row, 3).setFontWeight('bold').setFontColor('#B8860B'); sheet.getRange(row, 4).setFontColor('#8A93B8').setFontSize(10); }
+    else if (t === 'rank')     { sheet.getRange(row, 1).setFontWeight('bold'); sheet.getRange(row, 2, 1, 3).merge().setFontColor('#2B3350'); }
+    else if (t === 'kv')       { sheet.getRange(row, 1).setFontWeight('bold').setFontColor('#8A5A00'); sheet.getRange(row, 2, 1, 3).merge().setFontColor('#2B3350'); }
   }
 
-  sheet.setColumnWidth(1, 150);
-  sheet.setColumnWidth(2, 460);
-  sheet.setColumnWidth(3, 160);
-  sheet.setColumnWidth(4, 120);
-  sheet.setColumnWidth(5, 160);
+  sheet.setColumnWidth(1, 250);
+  sheet.setColumnWidth(2, 440);
+  sheet.setColumnWidth(3, 150);
+  sheet.setColumnWidth(4, 170);
+  try { sheet.setHiddenGridlines(true); } catch (e) {}
   sheet.setFrozenRows(1);
-  sheet.getRange(1, 1, values.length, 5).setVerticalAlignment('middle');
+}
+
+/* ------------------------------------------------------------------ */
+/* GM menu — a one-click toolbar in the sheet (appears on open)        */
+/* ------------------------------------------------------------------ */
+
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu('⚔ WEPROJECT LEGENDS')
+      .addItem('🔄 Refresh Guide', 'refreshGuide')
+      .addSeparator()
+      .addItem('⚙ Apply rule changes (Missions / Actions / Shop)', 'applySalesChallengeConfig')
+      .addItem('▶ Start a NEW month (reset gauntlet + ranks)', 'setSeasonToThisMonth')
+      .addSeparator()
+      .addItem('🧹 Simplify sheet (hide setup tabs)', 'simplifySheet')
+      .addToUi();
+  } catch (e) {}
+}
+
+/** One-click: rebuild the Guide tab from the current Missions / Actions / Shop tabs. */
+function refreshGuide() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  buildGuide(ss);
+  try { CacheService.getScriptCache().removeAll(['state:weproject', 'state:wellous', 'tv']); } catch (e) {}
+  uiAlert_('Guide refreshed', 'The Guide tab now matches the current Missions, Actions and Shop tabs.');
 }
 
 /* ================================================================== */
@@ -1215,31 +1274,37 @@ function buildHomeTab(ss) {
   if (sheet) { sheet.clear(); } else { sheet = ss.insertSheet('HOME'); }
 
   var content = [
-    { t: 'title',   a: 'WEPROJECT LEGENDS — START HERE', b: '' },
+    { t: 'title',   a: 'WEPROJECT LEGENDS — GM START HERE', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '⭐ EVERY DAY — 3 THINGS', b: '' },
-    { t: 'step', a: '1.  In EXP_Log: pick the person, pick the task, tick "approved". For a real sale, also type the RM value in amount_rm.', b: '' },
-    { t: 'step', a: '2.  (Optional) Add standout moments to Achievements_Feed — the highlights shown on the office TV.', b: '' },
-    { t: 'step', a: '3.  In Redemptions & Mission_Log: set anything "pending" to approved or rejected.', b: '' },
+    { t: 'step', a: '1.  Approve — in Mission_Log & Redemptions, set anything "pending" → approved (or rejected).', b: '' },
+    { t: 'step', a: '2.  Log sales & wins — in EXP_Log: pick person + category + item, tick "approved". For a real sale, put the RM in amount_rm.', b: '' },
+    { t: 'step', a: '3.  (Optional) Highlights — add standout moments to Achievements_Feed for the office TV.', b: '' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '🕹 ONE-CLICK MENU (top bar: “⚔ WEPROJECT LEGENDS”)', b: '' },
+    { t: 'kv', a: '🔄 Refresh Guide', b: 'Rebuild the Guide tab after you change any mission / EXP / reward.' },
+    { t: 'kv', a: '⚙ Apply rule changes', b: 'Push edits from Missions / Actions / Shop into the game + Guide.' },
+    { t: 'kv', a: '▶ Start a NEW month', b: 'Reset the boss gauntlet + everyone’s Rank to the current month.' },
+    { t: 'step', a: 'Don’t see the menu? Reload the sheet once (it appears next to Help).', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '📖 WHERE THINGS ARE', b: '' },
     { t: 'kv', a: 'EXP_Log', b: 'The daily scoreboard — every point & sale. The tab you use most.' },
-    { t: 'kv', a: 'Achievements_Feed', b: 'Highlights for the TV screen.' },
     { t: 'kv', a: 'Redemptions', b: 'Shop redeems waiting for your approval.' },
     { t: 'kv', a: 'Mission_Log', b: 'Missions players submitted, waiting for approval.' },
     { t: 'kv', a: 'Lateness', b: 'Add a row when someone is late — coins auto-deduct.' },
+    { t: 'kv', a: 'Achievements_Feed', b: 'Highlights for the TV screen.' },
     { t: 'kv', a: 'Players', b: 'Everyone on the team + their 4-digit PINs.' },
-    { t: 'kv', a: 'Guide', b: 'Full rules: what each task is worth, how the monthly gauntlet works.' },
+    { t: 'kv', a: 'Guide', b: 'The full rules for players, leads & boss (auto-built — read-only).' },
+    { t: 'blank',   a: '', b: '' },
+    { t: 'section', a: '✏️ TO CHANGE A MISSION, REWARD OR EXP', b: '' },
+    { t: 'step', a: 'Edit the Missions / Actions / Shop tab (unhide via the ☰ "All Sheets" icon, bottom-left). The player app reflects it within a minute; then click ⚔ menu → Refresh Guide to update the Guide tab.', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '🤖 AUTOMATIC — NO ACTION NEEDED', b: '' },
-    { t: 'step', a: 'The gauntlet (Tower I → Tower II → Crystal), the Damage ranking, and everyone\'s Gold all update by themselves from the rows you approve in EXP_Log — nothing to hand-edit. (To start a fresh gauntlet, run setSeasonToThisMonth in the Apps Script editor.)', b: '' },
-    { t: 'blank',   a: '', b: '' },
-    { t: 'section', a: '⚙️ SETUP TABS ARE HIDDEN', b: '' },
-    { t: 'step', a: 'Shop / Actions / Missions / Config / Presets are hidden to keep things clean. To change prices, point values, missions, or the season, show them via the ☰ "All Sheets" icon (bottom-left) or View → Hidden sheets.', b: '' },
+    { t: 'step', a: 'The boss gauntlet (Tower I → Tower II → Crystal), the Damage ranking and everyone’s coins all update by themselves from the rows you approve — nothing to hand-edit.', b: '' },
     { t: 'blank',   a: '', b: '' },
     { t: 'section', a: '✅ GOLDEN RULES', b: '' },
     { t: 'step', a: '• Nothing counts until you tick "approved".', b: '' },
-    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it is the damage dealt to the citadel + the Damage board.', b: '' },
+    { t: 'step', a: '• amount_rm is ONLY for real sales (RM) — it is the damage dealt to the boss + the Damage board.', b: '' },
     { t: 'step', a: '• To fix a mistake: add a new row with a NEGATIVE number. Never delete history.', b: '' }
   ];
 
@@ -1254,15 +1319,16 @@ function buildHomeTab(ss) {
     } else if (t === 'section') {
       sheet.getRange(row, 1, 1, 2).merge().setFontWeight('bold').setFontColor('#F5C542').setBackground('#12172B');
     } else if (t === 'step') {
-      sheet.getRange(row, 1, 1, 2).merge().setWrap(true);
+      sheet.getRange(row, 1, 1, 2).merge().setWrap(true).setFontColor('#2B3350');
     } else if (t === 'kv') {
-      sheet.getRange(row, 1).setFontWeight('bold');
-      sheet.getRange(row, 2).setWrap(true);
+      sheet.getRange(row, 1).setFontWeight('bold').setFontColor('#8A5A00');
+      sheet.getRange(row, 2).setWrap(true).setFontColor('#2B3350');
     }
   }
 
   sheet.setColumnWidth(1, 230);
   sheet.setColumnWidth(2, 640);
   sheet.setFrozenRows(1);
+  try { sheet.setHiddenGridlines(true); } catch (e) {}
   sheet.getRange(1, 1, values.length, 2).setVerticalAlignment('middle');
 }
